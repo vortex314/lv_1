@@ -7,6 +7,10 @@ https://github.com/lvgl/lv_drivers/blob/master/gtkdrv/README.md
    sudo apt-get install libgtk-3-dev
    sudo apt-get install libglib2.0-dev
 ```
+## Prelude run 
+```
+   ulimit -s 30000
+```
 ## lv_drv_conf.h
 ```
 #  define USE_GTK       1
