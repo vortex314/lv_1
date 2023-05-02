@@ -1,0 +1,17 @@
+[package]
+name = "lv_1"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lvgl = { git = "https://github.com/lvgl/lv_binding_rust", branch = "fix-style-layout" }
+lvgl-sys = { git = "https://github.com/lvgl/lv_binding_rust", branch = "fix-style-layout" }
+gtk = { version = "0.17.1" }
+# cstring = "0.1.1"
+cstr_core = "0.2.4"
+log4rs = "1.2.0"
+log = "0.4.17"
+
+
