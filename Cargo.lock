@@ -816,7 +816,7 @@ dependencies = [
 [[package]]
 name = "lvgl"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#ef03fb910a570b2e84249f842ebbba407dbd559d"
+source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#c5c8f4991e192897023c2874dd18ea2bf847258d"
 dependencies = [
  "bitflags 2.2.1",
  "cstr_core",
@@ -833,7 +833,7 @@ dependencies = [
 [[package]]
 name = "lvgl-codegen"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#ef03fb910a570b2e84249f842ebbba407dbd559d"
+source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#c5c8f4991e192897023c2874dd18ea2bf847258d"
 dependencies = [
  "Inflector",
  "lazy_static",
@@ -846,7 +846,7 @@ dependencies = [
 [[package]]
 name = "lvgl-sys"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#ef03fb910a570b2e84249f842ebbba407dbd559d"
+source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#c5c8f4991e192897023c2874dd18ea2bf847258d"
 dependencies = [
  "bindgen",
  "cc",
@@ -1607,9 +1607,9 @@ checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
 
 [[package]]
 name = "winnow"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69af645a61644c6dd379ade8b77cc87efb5393c988707bad12d3c8e00c50f669"
+checksum = "61de7bac303dc551fe038e2b3cef0f571087a47571ea6e79a87692ac99b99699"
 dependencies = [
  "memchr",
 ]
