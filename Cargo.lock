@@ -811,12 +811,13 @@ dependencies = [
  "log4rs",
  "lvgl",
  "lvgl-sys",
+ "yaml-rust",
 ]
 
 [[package]]
 name = "lvgl"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#c5c8f4991e192897023c2874dd18ea2bf847258d"
+source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-obj-codegen#51af84af84ed2e4084c96b03a76e35065535101c"
 dependencies = [
  "bitflags 2.2.1",
  "cstr_core",
@@ -833,7 +834,7 @@ dependencies = [
 [[package]]
 name = "lvgl-codegen"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#c5c8f4991e192897023c2874dd18ea2bf847258d"
+source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-obj-codegen#51af84af84ed2e4084c96b03a76e35065535101c"
 dependencies = [
  "Inflector",
  "lazy_static",
@@ -846,7 +847,7 @@ dependencies = [
 [[package]]
 name = "lvgl-sys"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-style-layout#c5c8f4991e192897023c2874dd18ea2bf847258d"
+source = "git+https://github.com/lvgl/lv_binding_rust?branch=fix-obj-codegen#51af84af84ed2e4084c96b03a76e35065535101c"
 dependencies = [
  "bindgen",
  "cc",
