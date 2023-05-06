@@ -6,9 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lvgl = { git = "https://github.com/lvgl/lv_binding_rust" ,branch = "fix-obj-codegen"}
-lvgl-sys = { git = "https://github.com/lvgl/lv_binding_rust",branch="fix-obj-codegen" }
+lvgl = { git = "https://github.com/lvgl/lv_binding_rust" }
+lvgl-sys = { git = "https://github.com/lvgl/lv_binding_rust" }
 gtk = { version = "0.17.1" }
+sdl2 = { version = "0.34.5" }
 # cstring = "0.1.1"
 cstr_core = "0.2.4"
 log4rs = "1.2.0"

@@ -12,13 +12,16 @@ use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use lvgl::input_device::InputDriver;
 use lvgl::lv_drv_disp_gtk;
+use lvgl::lv_drv_disp_sdl;
 use lvgl::lv_drv_input_pointer_gtk;
-use lvgl::style::{CoordDesc, Layout, Opacity, Style};
+use lvgl::lv_drv_input_pointer_sdl;
+use lvgl::style::{CoordDesc, Layout, Opacity, Style,GridAlign};
 use lvgl::widgets::MeterPart::Needle;
 use lvgl::widgets::{Arc, Btn, Label, Meter, MeterPart};
 use lvgl::LvResult;
 use lvgl::{Align, Color, DrawBuffer, Obj, Part, Widget};
 use lvgl_sys::LV_LAYOUT_GRID;
+use lvgl::Align::*;
 use std::boxed::Box;
 use std::thread::sleep;
 use std::time::Duration;
@@ -33,12 +36,11 @@ fn main() -> LvResult<()> {
     const VER_RES: u32 = 768;
 
     let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
-    let display = lv_drv_disp_gtk!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
-    let _input = lv_drv_input_pointer_gtk!(display)?;
+    let display = lv_drv_disp_sdl!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+    let _input = lv_drv_input_pointer_sdl!(display)?;
 
     // Create screen and widgets
     let mut screen = display.get_scr_act()?;
-    // cont.set_size(300, 200)?;
 
     let mut cont = Obj::create(&mut screen)?;
 
@@ -50,35 +52,52 @@ fn main() -> LvResult<()> {
         cont_style.set_grid_column_dsc_array(&x_grid);
         cont_style.set_grid_row_dsc_array(&y_grid);
     }
+    cont_style.set_pad_row(1);
+    cont_style.set_pad_column(1);
+    cont_style.set_width(240);
+    cont_style.set_height(240);
     cont_style.set_align(Align::Center);
-    cont_style.set_layout(Layout::grid());
-    cont_style.set_width(300);
-    cont_style.set_height(200);
-
     cont.add_style(Part::Main, &mut cont_style)?;
+    cont_style.set_layout(Layout::grid());
 
     let mut buttons = Vec::new();
+    let mut styles = Vec::new();
 
     for i in 0..9 {
         let col = i % 3;
         let row = i / 3;
 
-        let mut btn = Btn::create(&mut cont)?;
-        let mut btn_style = Style::default();
-        btn_style.set_grid_cell_column_pos(col);
+        let btn = {
+            buttons.push(Btn::create(&mut cont)?);
+            buttons.last_mut().unwrap()
+        };
+        let btn_style =
+        {
+            styles.push(Style::default());
+            styles.last_mut().unwrap()
+        };
+        btn_style.set_grid_cell_column_pos(col );
         btn_style.set_grid_cell_row_pos(row);
-        btn_style.set_grid_cell_column_span(2);
-        btn_style.set_grid_cell_row_span(2);
-        btn_style.set_width(70);
+        btn_style.set_grid_cell_column_span(1);
+        btn_style.set_grid_cell_row_span(1);
+        btn_style.set_grid_cell_x_align(GridAlign::STRETCH);
+        btn_style.set_grid_cell_y_align(GridAlign::STRETCH);
+        btn_style.set_width(50);
         btn_style.set_height(50);
-        info!(" row {} col {}", row, col);
-        btn.add_style(Part::Any, &mut btn_style)?;
+        btn_style.set_pad_top(5);
+        btn_style.set_pad_bottom(5);
+        btn_style.set_pad_left(5);
+        btn_style.set_pad_right(5);
+        btn_style.set_radius(0);
 
-        let mut label = Label::create(&mut btn)?;
+    
+        info!(" row {} col {}", row, col);
+        btn.add_style(Part::Main, btn_style)?;
+    
+        let mut label = Label::create(btn)?;
         let s = CString::new(format!("c{}, r{} ", col, row)).unwrap();
         label.set_text(&s)?;
         label.set_align(Align::Center, 0, 0)?;
-        buttons.push(btn);
     }
     info!("start loop");
     loop {

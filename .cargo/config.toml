@@ -12,6 +12,6 @@ LVGL_INCLUDE = """
 /usr/include/gdk-pixbuf-2.0,\
 /usr/include/atk-1.0,\
 /usr/include/freetype2"""
-LVGL_LINK="gtk-3,gdk-3,pangocairo-1.0,pango-1.0,harfbuzz,atk-1.0,cairo-gobject,cairo,gdk_pixbuf-2.0,gio-2.0,gobject-2.0,glib-2.0"
+LVGL_LINK="gtk-3,gdk-3,pangocairo-1.0,pango-1.0,harfbuzz,atk-1.0,cairo-gobject,cairo,gdk_pixbuf-2.0,gio-2.0,gobject-2.0,glib-2.0,SDL2,SDL"
 LIBCLANG_PATH={ value = "/usr/lib/llvm-14/lib" ,force=true}
 # the above path can be obtained with >llvm-config --libdir<  , don't know how to do get the ouput of a command in env var
