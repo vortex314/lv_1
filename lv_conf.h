@@ -19,8 +19,8 @@
 
 #include <stdint.h>
 
-#define LV_HOR_RES_MAX          (512)
-#define LV_VER_RES_MAX          (384)
+#define LV_HOR_RES_MAX          (1024)
+#define LV_VER_RES_MAX          (768)
 
 /*====================
    COLOR SETTINGS
@@ -235,7 +235,7 @@
     *LV_LOG_LEVEL_ERROR       Only critical issue, when the system may fail
     *LV_LOG_LEVEL_USER        Only logs added by the user
     *LV_LOG_LEVEL_NONE        Do not log anything*/
-    #define LV_LOG_LEVEL LV_LOG_LEVEL_TRACE
+    #define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
 
     /*1: Print the log with 'printf';
     *0: User need to register a callback with `lv_log_register_print_cb()`*/

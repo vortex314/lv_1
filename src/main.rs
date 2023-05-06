@@ -34,28 +34,51 @@ fn main() -> LvResult<()> {
     info!("Starting up");
     const HOR_RES: u32 = 1024;
     const VER_RES: u32 = 768;
+    const COL_COUNT:u32=24;
+    const ROW_COUNT:u32=24;
+    const COL_WIDTH :u32= HOR_RES / COL_COUNT;
+    const ROW_HEIGHT :u32= VER_RES / ROW_COUNT;
 
     let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
-    let display = lv_drv_disp_sdl!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
-    let _input = lv_drv_input_pointer_sdl!(display)?;
+ //   let display = lv_drv_disp_sdl!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+ //   let _input = lv_drv_input_pointer_sdl!(display)?;
+    let display = lv_drv_disp_gtk!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+    let _input = lv_drv_input_pointer_gtk!(display)?;   
+ //   let display = lv_drv_disp_fb!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+ //   let _input = lv_drv_input_pointer_fb!(display)?;   
 
     // Create screen and widgets
     let mut screen = display.get_scr_act()?;
+    let mut screen_style = Style::default();
+    screen_style.set_pad_bottom(0);
+    screen_style.set_pad_top(0);
+    screen_style.set_pad_left(0);
+    screen_style.set_pad_right(0);
+    screen.add_style(Part::Main, &mut screen_style)?;
 
     let mut cont = Obj::create(&mut screen)?;
 
     let mut cont_style = Style::default();
+    let  x_array = [COL_WIDTH as i16; COL_COUNT as usize];
+    let  y_array = [ROW_HEIGHT as i16; ROW_COUNT as usize];
 
     unsafe {
-        let x_grid = CoordDesc::<3>::from_values([70, 70, 70], true);
-        let y_grid = CoordDesc::<3>::from_values([50, 50, 50], true);
+        const XSIZE : usize = COL_COUNT as usize;
+        const YSIZE : usize = ROW_COUNT as usize;
+        let x_grid = CoordDesc::<XSIZE>::from_values(x_array, true);
+        let y_grid = CoordDesc::<YSIZE>::from_values(y_array, true);
         cont_style.set_grid_column_dsc_array(&x_grid);
         cont_style.set_grid_row_dsc_array(&y_grid);
     }
-    cont_style.set_pad_row(1);
-    cont_style.set_pad_column(1);
-    cont_style.set_width(240);
-    cont_style.set_height(240);
+    cont_style.set_pad_row(0);
+    cont_style.set_pad_column(0);
+    cont_style.set_pad_left(0);
+    cont_style.set_pad_right(0);
+    cont_style.set_pad_top(0);
+    cont_style.set_pad_bottom(0);
+
+    cont_style.set_width(HOR_RES as i16);
+    cont_style.set_height(VER_RES as i16);
     cont_style.set_align(Align::Center);
     cont.add_style(Part::Main, &mut cont_style)?;
     cont_style.set_layout(Layout::grid());
@@ -63,9 +86,9 @@ fn main() -> LvResult<()> {
     let mut buttons = Vec::new();
     let mut styles = Vec::new();
 
-    for i in 0..9 {
-        let col = i % 3;
-        let row = i / 3;
+    for i in 0..(COL_COUNT * ROW_COUNT) {
+        let col = i % COL_COUNT;
+        let row = i / ROW_COUNT;
 
         let btn = {
             buttons.push(Btn::create(&mut cont)?);
@@ -76,22 +99,27 @@ fn main() -> LvResult<()> {
             styles.push(Style::default());
             styles.last_mut().unwrap()
         };
-        btn_style.set_grid_cell_column_pos(col );
-        btn_style.set_grid_cell_row_pos(row);
+        if  row == col {
+            btn_style.set_bg_color(Color::from_rgb((0, 0, 255)));
+        } else {
+            btn_style.set_bg_color(Color::from_rgb((255, 0, 0)));
+        }
+        btn_style.set_grid_cell_column_pos(col as i16 );
+        btn_style.set_grid_cell_row_pos(row as i16);
         btn_style.set_grid_cell_column_span(1);
         btn_style.set_grid_cell_row_span(1);
         btn_style.set_grid_cell_x_align(GridAlign::STRETCH);
         btn_style.set_grid_cell_y_align(GridAlign::STRETCH);
-        btn_style.set_width(50);
-        btn_style.set_height(50);
-        btn_style.set_pad_top(5);
-        btn_style.set_pad_bottom(5);
-        btn_style.set_pad_left(5);
-        btn_style.set_pad_right(5);
+        btn_style.set_width(COL_WIDTH as i16);
+        btn_style.set_height(ROW_HEIGHT as i16);
+        btn_style.set_pad_top(0);
+        btn_style.set_pad_bottom(0);
+        btn_style.set_pad_left(0);
+        btn_style.set_pad_right(0);
         btn_style.set_radius(0);
 
     
-        info!(" row {} col {}", row, col);
+ //       info!(" row {} col {}", row, col);
         btn.add_style(Part::Main, btn_style)?;
     
         let mut label = Label::create(btn)?;
