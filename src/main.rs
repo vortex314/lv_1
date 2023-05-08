@@ -15,13 +15,14 @@ use lvgl::lv_drv_disp_gtk;
 use lvgl::lv_drv_disp_sdl;
 use lvgl::lv_drv_input_pointer_gtk;
 use lvgl::lv_drv_input_pointer_sdl;
-use lvgl::style::{CoordDesc, Layout, Opacity, Style,GridAlign};
+use lvgl::style::{CoordDesc, GridAlign, Layout, Opacity, Style};
 use lvgl::widgets::MeterPart::Needle;
-use lvgl::widgets::{Arc, Btn, Label, Meter, MeterPart};
-use lvgl::LvResult;
-use lvgl::{Align, Color, DrawBuffer, Obj, Part, Widget};
-use lvgl_sys::LV_LAYOUT_GRID;
+use lvgl::widgets::{Arc, Bar, Btn, Img, Label, Meter, MeterPart, Slider, Switch};
 use lvgl::Align::*;
+use lvgl::LvResult;
+use lvgl::{Align, Animation, Color, DrawBuffer, Event, Obj, Part, Widget};
+use lvgl_sys::LV_LAYOUT_GRID;
+use lvgl_sys::_LV_FLEX_COLUMN;
 use std::boxed::Box;
 use std::thread::sleep;
 use std::time::Duration;
@@ -34,18 +35,19 @@ fn main() -> LvResult<()> {
     info!("Starting up");
     const HOR_RES: u32 = 1024;
     const VER_RES: u32 = 768;
-    const COL_COUNT:u32=24;
-    const ROW_COUNT:u32=24;
-    const COL_WIDTH :u32= HOR_RES / COL_COUNT;
-    const ROW_HEIGHT :u32= VER_RES / ROW_COUNT;
+    const COL_COUNT: u32 = 24;
+    const ROW_COUNT: u32 = 24;
+    const COL_WIDTH: u32 = HOR_RES / COL_COUNT;
+    const ROW_HEIGHT: u32 = VER_RES / ROW_COUNT;
+    const SQUARE_FACTOR: f64 = HOR_RES as f64 / VER_RES as f64;
 
     let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
- //   let display = lv_drv_disp_sdl!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
- //   let _input = lv_drv_input_pointer_sdl!(display)?;
+    //   let display = lv_drv_disp_sdl!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+    //   let _input = lv_drv_input_pointer_sdl!(display)?;
     let display = lv_drv_disp_gtk!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
-    let _input = lv_drv_input_pointer_gtk!(display)?;   
- //   let display = lv_drv_disp_fb!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
- //   let _input = lv_drv_input_pointer_fb!(display)?;   
+    let _input = lv_drv_input_pointer_gtk!(display)?;
+    //   let display = lv_drv_disp_fb!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+    //   let _input = lv_drv_input_pointer_fb!(display)?;
 
     // Create screen and widgets
     let mut screen = display.get_scr_act()?;
@@ -59,12 +61,12 @@ fn main() -> LvResult<()> {
     let mut cont = Obj::create(&mut screen)?;
 
     let mut cont_style = Style::default();
-    let  x_array = [COL_WIDTH as i16; COL_COUNT as usize];
-    let  y_array = [ROW_HEIGHT as i16; ROW_COUNT as usize];
+    let x_array = [COL_WIDTH as i16; COL_COUNT as usize];
+    let y_array = [ROW_HEIGHT as i16; ROW_COUNT as usize];
 
     unsafe {
-        const XSIZE : usize = COL_COUNT as usize;
-        const YSIZE : usize = ROW_COUNT as usize;
+        const XSIZE: usize = COL_COUNT as usize;
+        const YSIZE: usize = ROW_COUNT as usize;
         let x_grid = CoordDesc::<XSIZE>::from_values(x_array, true);
         let y_grid = CoordDesc::<YSIZE>::from_values(y_array, true);
         cont_style.set_grid_column_dsc_array(&x_grid);
@@ -83,28 +85,87 @@ fn main() -> LvResult<()> {
     cont.add_style(Part::Main, &mut cont_style)?;
     cont_style.set_layout(Layout::grid());
 
-    let mut buttons = Vec::new();
+    //let mut buttons = Vec::new();
     let mut styles = Vec::new();
 
-    for i in 0..(COL_COUNT * ROW_COUNT) {
-        let col = i % COL_COUNT;
-        let row = i / ROW_COUNT;
+    {
+        let mut _btn = Btn::create(&mut cont)?;
+        let mut _btn_style = new_grid_style(&mut styles, 0, 0, 2, 1);
+        let mut _btn_label = Label::create(&mut _btn)?;
+        let cstr = CString::new("Button").unwrap();
+        _btn_label.set_text(&cstr)?;
+        _btn_label.set_align(Align::Center, 0, 0)?;
+        _btn.add_style(Part::Main, &mut _btn_style)?;
+    }
+    {
+        let mut switch = Switch::create(&mut cont)?;
+        let switch_style = new_grid_style(&mut styles, 0, 1, 1, 1);
+        switch.add_style(Part::Main, switch_style)?;
+    }
+    {
+        let mut bar = Bar::create(&mut cont)?;
+        let bar_style = new_grid_style(&mut styles, 0, 2, 3, 1);
+        bar.add_style(Part::Main, bar_style)?;
+        bar.set_value(50, Animation::OFF)?;
+    }
+    {
+        let mut meter = Meter::create(&mut cont)?;
+        let meter_style = new_grid_style(&mut styles, 0, 3, 3, (3.0 * SQUARE_FACTOR) as i16);
+        meter.add_style(Part::Main, meter_style)?;
+    }
+    {
+        // slider box
+        let mut cont_slider = Obj::create(&mut cont)?;
+        let cont_slider_style = new_grid_style(&mut styles, 0, 7, 4, 1);
+        cont_slider_style.set_layout(Layout::flex());
+        cont_slider_style.set_flex_flow(_LV_FLEX_COLUMN);
+        cont_slider_style.set_flex_grow(1);
+        cont_slider_style.set_height(2 * ROW_HEIGHT as i16);
+        cont_slider_style.set_width(3 * COL_WIDTH as i16);
+        cont_slider.add_style(Part::Main, cont_slider_style)?;
 
-        let btn = {
-            buttons.push(Btn::create(&mut cont)?);
-            buttons.last_mut().unwrap()
+        let mut slider = Slider::create(&mut cont_slider)?;
+        let slider_style = new_style(&mut styles);
+        slider.add_style(Part::Main, slider_style)?;
+        slider.on_event(|_slider, _event| {
+            info!(" Event received frome slider {:?}", _event);
+            match _event {
+                Event::Released => {
+                    info!("Slider released");
+                }
+                _ => {}
+            }
+        })?;
+
+        let mut slider_label = Label::create(&mut cont_slider)?;
+        let str1 = CString::new("Label").unwrap();
+        slider_label.set_text(&str1)?;
+    }
+/*{
+    let mut image = Img::create(&mut cont)?;
+    let image_style = new_grid_style(&mut styles, 1, 4, 1, 3);
+    image.add_style(Part::Main, image_style)?;
+}*/
+    /*    for i in 0..(COL_COUNT * ROW_COUNT) {
+        let col = i % COL_COUNT;
+        let row = i / COL_COUNT;
+
+        let mut btn = {
+            //            buttons.push(Btn::create(&mut cont)?);
+            //           buttons.last_mut().unwrap()
+            Btn::create(&mut cont)?
         };
-        let btn_style =
-        {
+        let btn_style = {
             styles.push(Style::default());
             styles.last_mut().unwrap()
         };
-        if  row == col {
+        if row == col {
             btn_style.set_bg_color(Color::from_rgb((0, 0, 255)));
         } else {
-            btn_style.set_bg_color(Color::from_rgb((255, 0, 0)));
+            btn_style.set_bg_color(Color::from_rgb((255, 255, 255)));
+            btn_style.set_text_color(Color::from_rgb((0, 0, 0)));
         }
-        btn_style.set_grid_cell_column_pos(col as i16 );
+        btn_style.set_grid_cell_column_pos(col as i16);
         btn_style.set_grid_cell_row_pos(row as i16);
         btn_style.set_grid_cell_column_span(1);
         btn_style.set_grid_cell_row_span(1);
@@ -118,15 +179,14 @@ fn main() -> LvResult<()> {
         btn_style.set_pad_right(0);
         btn_style.set_radius(0);
 
-    
- //       info!(" row {} col {}", row, col);
+        info!("i {} row {} col {}", i, row, col);
         btn.add_style(Part::Main, btn_style)?;
-    
-        let mut label = Label::create(btn)?;
+
+        let mut label = Label::create(&mut btn)?;
         let s = CString::new(format!("c{}, r{} ", col, row)).unwrap();
         label.set_text(&s)?;
         label.set_align(Align::Center, 0, 0)?;
-    }
+    }*/
     info!("start loop");
     loop {
         let start = Instant::now();
@@ -149,6 +209,35 @@ fn set_logging() {
         .unwrap();
 
     log4rs::init_config(config).unwrap();
+}
+// to avoid the leakage of the styles
+fn new_style<'a>(v: &'a mut Vec<Style>) -> &'a mut Style {
+    v.push(Style::default());
+    let style = v.last_mut().unwrap();
+    style.set_pad_bottom(0);
+    style.set_pad_top(0);
+    style.set_pad_left(0);
+    style.set_pad_right(0);
+    style
+}
+
+fn new_grid_style<'a>(
+    v: &'a mut Vec<Style>,
+    x: i16,
+    y: i16,
+    x_size: i16,
+    y_size: i16,
+) -> &'a mut Style {
+    let style = new_style(v);
+
+    style.set_grid_cell_column_pos(x);
+    style.set_grid_cell_row_pos(y);
+    style.set_grid_cell_column_span(x_size);
+    style.set_grid_cell_row_span(y_size);
+    style.set_align(Align::Center);
+    //    style.set_grid_cell_x_align(GridAlign::STRETCH);
+    //    style.set_grid_cell_y_align(GridAlign::STRETCH);
+    style
 }
 
 fn load_yaml() -> Vec<yaml_rust::Yaml> {
