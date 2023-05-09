@@ -15,5 +15,8 @@ cstr_core = "0.2.4"
 log4rs = "1.2.0"
 log = "0.4.17"
 yaml-rust = "0.4.5"
-
-
+crossbeam = "0.8.2"
+crossbeam-channel = "0.5.1"
+redis = "0.23.0"
+chrono = "0.4.19"
+rand = "0.8.4"
