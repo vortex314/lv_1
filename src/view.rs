@@ -61,110 +61,16 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
     screen_style.set_pad_right(0);
     screen.add_style(Part::Main, &mut screen_style)?;
 
-    let mut cont = Obj::create(&mut screen)?;
+    let mut styles = Vec::< Style>::new();
 
-    let mut cont_style = Style::default();
-    let x_array = [COL_WIDTH as i16; COL_COUNT as usize];
-    let y_array = [ROW_HEIGHT as i16; ROW_COUNT as usize];
-
-    unsafe {
-        const XSIZE: usize = COL_COUNT as usize;
-        const YSIZE: usize = ROW_COUNT as usize;
-        let x_grid = CoordDesc::<XSIZE>::from_values(x_array, true);
-        let y_grid = CoordDesc::<YSIZE>::from_values(y_array, true);
-        cont_style.set_grid_column_dsc_array(&x_grid);
-        cont_style.set_grid_row_dsc_array(&y_grid);
-    }
-    cont_style.set_pad_row(0);
-    cont_style.set_pad_column(0);
-    cont_style.set_pad_left(0);
-    cont_style.set_pad_right(0);
-    cont_style.set_pad_top(0);
-    cont_style.set_pad_bottom(0);
-
-    cont_style.set_width(HOR_RES as i16);
-    cont_style.set_height(VER_RES as i16);
-    cont_style.set_align(Align::Center);
-    cont.add_style(Part::Main, &mut cont_style)?;
-    cont_style.set_layout(Layout::grid());
-
-    //let mut buttons = Vec::new();
-    let mut styles = Vec::new();
-
-    let mut _btn = Btn::create(&mut cont)?;
-    let mut _btn_style = new_grid_style(&mut styles, 0, 0, 2, 1);
-    let mut _btn_label = Label::create(&mut _btn)?;
-    let cstr = CString::new("Button").unwrap();
-    _btn_label.set_text(&cstr)?;
-    _btn_label.set_align(Align::Center, 0, 0)?;
-    _btn.add_style(Part::Main, &mut _btn_style)?;
-    _btn.on_event(|_btn, event| match event {
-        Event::Clicked => {
-            info!("Button clicked");
-        }
-        _ => {}
-    })?;
-
-    {
-        let mut switch = Switch::create(&mut cont)?;
-        let switch_style = new_grid_style(&mut styles, 0, 1, 1, 1);
-        switch.add_style(Part::Main, switch_style)?;
-    }
-
-    let mut bar = Bar::create(&mut cont)?;
-    let bar_style = new_grid_style(&mut styles, 0, 2, 3, 1);
-    bar.add_style(Part::Main, bar_style)?;
-    bar.set_value(50, Animation::OFF)?;
-
-    let mut meter = Meter::create(&mut cont)?;
-    let meter_style = new_grid_style(&mut styles, 0, 3, 3, (3.0 * SQUARE_FACTOR) as i16);
-    meter.add_style(Part::Main, meter_style)?;
-
-    {
-        // slider box
-        let mut cont_slider = Obj::create(&mut cont)?;
-        let cont_slider_style = new_grid_style(&mut styles, 0, 7, 4, 1);
-        cont_slider_style.set_layout(Layout::flex());
-        cont_slider_style.set_flex_flow(_LV_FLEX_COLUMN);
-        cont_slider_style.set_flex_grow(1);
-        cont_slider_style.set_height(2 * ROW_HEIGHT as i16);
-        cont_slider_style.set_width(3 * COL_WIDTH as i16);
-        cont_slider_style.set_radius(0);
-        cont_slider_style.set_border_side(1);
-        cont_slider.add_style(Part::Main, cont_slider_style)?;
-
-        let mut slider = Slider::create(&mut cont_slider)?;
-        let slider_style = new_style(&mut styles);
-        slider.add_style(Part::Main, slider_style)?;
-        slider.on_event(|_slider, _event| match _event {
-            Event::Released => {
-                let val = _slider.get_value();
-                info!("Slider value released : {}", val.unwrap());
-            }
-            Event::ValueChanged => {
-                let val = _slider.get_value();
-                info!("Slider value changed : {}", val.unwrap());
-                bar.set_value(val.unwrap(), Animation::ON).unwrap();
-            }
-            _ => {}
-        })?;
-
-        let mut slider_label = Label::create(&mut cont_slider)?;
-        let str1 = CString::new("Label").unwrap();
-        slider_label.set_text(&str1)?;
-    }
-
-    let mut table = Table::create(&mut cont)?;
-    let table_style = new_grid_style(&mut styles, 7, 2, 16, 12);
+    let mut table = Table::create(&mut screen)?;
+    let table_style = new_style(&mut styles);
+    table_style.set_width(HOR_RES as i16);
+    table_style.set_height(VER_RES as i16);
     table.add_style(Part::Main, table_style)?;
     table.set_col_cnt(4)?;
-    table.set_row_cnt(4)?;
-    /*     table.set_col_width(0, 100)?;
-    table.set_col_width(1, 100)?;
-    table.set_col_width(2, 100)?;
-    table.set_row_height(0, 50)?;
-    table.set_row_height(1, 50)?;
-    table.set_row_height(2, 50)?;*/
+    table.set_row_cnt(15)?;
+
     table.set_cell_value(0, 0, &mut CString::new("Topic").unwrap())?;
     table.set_cell_value(0, 1, &CString::new("Message").unwrap())?;
     table.set_cell_value(0, 2, &CString::new("Count").unwrap())?;
@@ -175,52 +81,7 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
         }
     })?;
 
-    /*{
-        let mut image = Img::create(&mut cont)?;
-        let image_style = new_grid_style(&mut styles, 1, 4, 1, 3);
-        image.add_style(Part::Main, image_style)?;
-    }*/
-    /*    for i in 0..(COL_COUNT * ROW_COUNT) {
-        let col = i % COL_COUNT;
-        let row = i / COL_COUNT;
 
-        let mut btn = {
-            //            buttons.push(Btn::create(&mut cont)?);
-            //           buttons.last_mut().unwrap()
-            Btn::create(&mut cont)?
-        };
-        let btn_style = {
-            styles.push(Style::default());
-            styles.last_mut().unwrap()
-        };
-        if row == col {
-            btn_style.set_bg_color(Color::from_rgb((0, 0, 255)));
-        } else {
-            btn_style.set_bg_color(Color::from_rgb((255, 255, 255)));
-            btn_style.set_text_color(Color::from_rgb((0, 0, 0)));
-        }
-        btn_style.set_grid_cell_column_pos(col as i16);
-        btn_style.set_grid_cell_row_pos(row as i16);
-        btn_style.set_grid_cell_column_span(1);
-        btn_style.set_grid_cell_row_span(1);
-        btn_style.set_grid_cell_x_align(GridAlign::STRETCH);
-        btn_style.set_grid_cell_y_align(GridAlign::STRETCH);
-        btn_style.set_width(COL_WIDTH as i16);
-        btn_style.set_height(ROW_HEIGHT as i16);
-        btn_style.set_pad_top(0);
-        btn_style.set_pad_bottom(0);
-        btn_style.set_pad_left(0);
-        btn_style.set_pad_right(0);
-        btn_style.set_radius(0);
-
-        info!("i {} row {} col {}", i, row, col);
-        btn.add_style(Part::Main, btn_style)?;
-
-        let mut label = Label::create(&mut btn)?;
-        let s = CString::new(format!("c{}, r{} ", col, row)).unwrap();
-        label.set_text(&s)?;
-        label.set_align(Align::Center, 0, 0)?;
-    }*/
     struct Entry {
         topic: String,
         value: String,
@@ -258,7 +119,7 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
                     table.set_cell_value(
                         idx,
                         3,
-                        &CString::new(entry.1.time.format("%Y-%m-%d %H:%M:%S").to_string())
+                        &CString::new(entry.1.time.format("%H:%M:%S").to_string())
                             .unwrap(),
                     )?;
                     idx += 1;
