@@ -3,6 +3,7 @@
 //#![allow(unused_variables)]
 //#![allow(unreachable_code)]
 #![allow(unused_imports)]
+#![allow(dead_code)]
 
 use cstr_core::CString;
 use log::{info, warn, LevelFilter};
@@ -17,7 +18,7 @@ use lvgl::lv_drv_input_pointer_gtk;
 use lvgl::lv_drv_input_pointer_sdl;
 use lvgl::style::{CoordDesc, GridAlign, Layout, Opacity, Style};
 use lvgl::widgets::MeterPart::Needle;
-use lvgl::widgets::{Arc, Bar, Btn, Img, Label, Meter, MeterPart, Slider, Switch};
+use lvgl::widgets::{Arc, Bar, Btn, Img, Label, Meter, MeterPart, Slider, Switch, Table, Textarea};
 use lvgl::Align::*;
 use lvgl::LvResult;
 use lvgl::{Align, Animation, Color, DrawBuffer, Event, Obj, Part, Widget};
@@ -96,23 +97,28 @@ fn main() -> LvResult<()> {
         _btn_label.set_text(&cstr)?;
         _btn_label.set_align(Align::Center, 0, 0)?;
         _btn.add_style(Part::Main, &mut _btn_style)?;
+        _btn.on_event(|_btn, event| match event {
+            Event::Clicked => {
+                info!("Button clicked");
+            }
+            _ => {}
+        })?;
     }
     {
         let mut switch = Switch::create(&mut cont)?;
         let switch_style = new_grid_style(&mut styles, 0, 1, 1, 1);
         switch.add_style(Part::Main, switch_style)?;
     }
-    {
-        let mut bar = Bar::create(&mut cont)?;
-        let bar_style = new_grid_style(&mut styles, 0, 2, 3, 1);
-        bar.add_style(Part::Main, bar_style)?;
-        bar.set_value(50, Animation::OFF)?;
-    }
-    {
-        let mut meter = Meter::create(&mut cont)?;
-        let meter_style = new_grid_style(&mut styles, 0, 3, 3, (3.0 * SQUARE_FACTOR) as i16);
-        meter.add_style(Part::Main, meter_style)?;
-    }
+
+    let mut bar = Bar::create(&mut cont)?;
+    let bar_style = new_grid_style(&mut styles, 0, 2, 3, 1);
+    bar.add_style(Part::Main, bar_style)?;
+    bar.set_value(50, Animation::OFF)?;
+
+    let mut meter = Meter::create(&mut cont)?;
+    let meter_style = new_grid_style(&mut styles, 0, 3, 3, (3.0 * SQUARE_FACTOR) as i16);
+    meter.add_style(Part::Main, meter_style)?;
+
     {
         // slider box
         let mut cont_slider = Obj::create(&mut cont)?;
@@ -122,30 +128,63 @@ fn main() -> LvResult<()> {
         cont_slider_style.set_flex_grow(1);
         cont_slider_style.set_height(2 * ROW_HEIGHT as i16);
         cont_slider_style.set_width(3 * COL_WIDTH as i16);
+        cont_slider_style.set_radius(0);
+        cont_slider_style.set_border_side(1);
         cont_slider.add_style(Part::Main, cont_slider_style)?;
 
         let mut slider = Slider::create(&mut cont_slider)?;
         let slider_style = new_style(&mut styles);
         slider.add_style(Part::Main, slider_style)?;
-        slider.on_event(|_slider, _event| {
-            info!(" Event received frome slider {:?}", _event);
-            match _event {
-                Event::Released => {
-                    info!("Slider released");
-                }
-                _ => {}
+        slider.on_event(|_slider, _event| match _event {
+            Event::Released => {
+                let val = _slider.get_value();
+                info!("Slider value released : {}", val.unwrap());
             }
+            Event::ValueChanged => {
+                let val = _slider.get_value();
+                info!("Slider value changed : {}", val.unwrap());
+                bar.set_value(val.unwrap(), Animation::ON).unwrap();
+            }
+            _ => {}
         })?;
 
         let mut slider_label = Label::create(&mut cont_slider)?;
         let str1 = CString::new("Label").unwrap();
         slider_label.set_text(&str1)?;
     }
-/*{
-    let mut image = Img::create(&mut cont)?;
-    let image_style = new_grid_style(&mut styles, 1, 4, 1, 3);
-    image.add_style(Part::Main, image_style)?;
-}*/
+
+    {
+        let mut table = Table::create(&mut cont)?;
+        let table_style = new_grid_style(&mut styles, 7, 2, 8,8);
+        table.add_style(Part::Main, table_style)?;
+        table.set_col_cnt(3)?;
+        table.set_row_cnt(3)?;
+        /*     table.set_col_width(0, 100)?;
+        table.set_col_width(1, 100)?;
+        table.set_col_width(2, 100)?;
+        table.set_row_height(0, 50)?;
+        table.set_row_height(1, 50)?;
+        table.set_row_height(2, 50)?;*/
+        table.set_cell_value(0, 0, &mut CString::new("1").unwrap())?;
+        table.set_cell_value(0, 1, &CString::new("2").unwrap())?;
+        table.set_cell_value(0, 2, &CString::new("3").unwrap())?;
+        table.set_cell_value(1, 0, &CString::new("4").unwrap())?;
+        table.set_cell_value(1, 1, &CString::new("5").unwrap())?;
+        table.set_cell_value(1, 2, &CString::new("6").unwrap())?;
+        table.set_cell_value(2, 0, &CString::new("7").unwrap())?;
+        table.set_cell_value(2, 1, &CString::new("8").unwrap())?;
+        table.set_cell_value(2, 2, &CString::new("9").unwrap())?;
+        table.on_event(|_table, _event| match _event {
+            _ => {
+                info!("Table event : {:?}", _event);
+            }
+        })?;
+    }
+    /*{
+        let mut image = Img::create(&mut cont)?;
+        let image_style = new_grid_style(&mut styles, 1, 4, 1, 3);
+        image.add_style(Part::Main, image_style)?;
+    }*/
     /*    for i in 0..(COL_COUNT * ROW_COUNT) {
         let col = i % COL_COUNT;
         let row = i / COL_COUNT;
@@ -212,12 +251,15 @@ fn set_logging() {
 }
 // to avoid the leakage of the styles
 fn new_style<'a>(v: &'a mut Vec<Style>) -> &'a mut Style {
-    v.push(Style::default());
+    let _style = StyleBuilder::new()
+        .set_pad_bottom(0)
+        .set_pad_top(0)
+        .set_pad_left(0)
+        .set_pad_right(0)
+        .build();
+    v.push(_style);
+
     let style = v.last_mut().unwrap();
-    style.set_pad_bottom(0);
-    style.set_pad_top(0);
-    style.set_pad_left(0);
-    style.set_pad_right(0);
     style
 }
 
@@ -229,15 +271,101 @@ fn new_grid_style<'a>(
     y_size: i16,
 ) -> &'a mut Style {
     let style = new_style(v);
-
+    //   StyleBuilder::from(style);
     style.set_grid_cell_column_pos(x);
     style.set_grid_cell_row_pos(y);
     style.set_grid_cell_column_span(x_size);
     style.set_grid_cell_row_span(y_size);
     style.set_align(Align::Center);
-    //    style.set_grid_cell_x_align(GridAlign::STRETCH);
-    //    style.set_grid_cell_y_align(GridAlign::STRETCH);
+    style.set_grid_cell_x_align(GridAlign::STRETCH);
+    style.set_grid_cell_y_align(GridAlign::STRETCH);
     style
+}
+
+struct StyleBuilder {
+    style: Style,
+}
+
+impl StyleBuilder {
+    fn new() -> StyleBuilder {
+        StyleBuilder {
+            style: Style::default(),
+        }
+    }
+    fn from(style: Style) -> StyleBuilder {
+        StyleBuilder { style }
+    }
+    fn set_grid_cell_column_pos(&mut self, x: i16) -> &mut StyleBuilder {
+        self.style.set_grid_cell_column_pos(x);
+        self
+    }
+    fn set_grid_cell_row_pos(&mut self, y: i16) -> &mut StyleBuilder {
+        self.style.set_grid_cell_row_pos(y);
+        self
+    }
+    fn set_grid_cell_column_span(&mut self, x_size: i16) -> &mut StyleBuilder {
+        self.style.set_grid_cell_column_span(x_size);
+        self
+    }
+    fn set_grid_cell_row_span(&mut self, y_size: i16) -> &mut StyleBuilder {
+        self.style.set_grid_cell_row_span(y_size);
+        self
+    }
+    fn set_align(&mut self, align: Align) -> &mut StyleBuilder {
+        self.style.set_align(align);
+        self
+    }
+    fn set_grid_cell_x_align(&mut self, align: GridAlign) -> &mut StyleBuilder {
+        self.style.set_grid_cell_x_align(align);
+        self
+    }
+    fn set_grid_cell_y_align(&mut self, align: GridAlign) -> &mut StyleBuilder {
+        self.style.set_grid_cell_y_align(align);
+        self
+    }
+    fn set_width(&mut self, width: i16) -> &mut StyleBuilder {
+        self.style.set_width(width);
+        self
+    }
+    fn set_height(&mut self, height: i16) -> &mut StyleBuilder {
+        self.style.set_height(height);
+        self
+    }
+    fn set_pad_top(&mut self, pad: i16) -> &mut StyleBuilder {
+        self.style.set_pad_top(pad);
+        self
+    }
+    fn set_pad_bottom(&mut self, pad: i16) -> &mut StyleBuilder {
+        self.style.set_pad_bottom(pad);
+        self
+    }
+    fn set_pad_left(&mut self, pad: i16) -> &mut StyleBuilder {
+        self.style.set_pad_left(pad);
+        self
+    }
+    fn set_pad_right(&mut self, pad: i16) -> &mut StyleBuilder {
+        self.style.set_pad_right(pad);
+        self
+    }
+    fn set_radius(&mut self, radius: i16) -> &mut StyleBuilder {
+        self.style.set_radius(radius);
+        self
+    }
+    fn set_bg_color(&mut self, color: Color) -> &mut StyleBuilder {
+        self.style.set_bg_color(color);
+        self
+    }
+    fn set_bg_opa(&mut self, opa: Opacity) -> &mut StyleBuilder {
+        self.style.set_bg_opa(opa);
+        self
+    }
+    fn set_bg_grad_color(&mut self, color: Color) -> &mut StyleBuilder {
+        self.style.set_bg_grad_color(color);
+        self
+    }
+    fn build(&mut self) -> Style {
+        self.style.clone()
+    }
 }
 
 fn load_yaml() -> Vec<yaml_rust::Yaml> {
