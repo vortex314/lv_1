@@ -15,3 +15,19 @@ LVGL_INCLUDE = """
 LVGL_LINK="gtk-3,gdk-3,pangocairo-1.0,pango-1.0,harfbuzz,atk-1.0,cairo-gobject,cairo,gdk_pixbuf-2.0,gio-2.0,gobject-2.0,glib-2.0,SDL2,SDL"
 LIBCLANG_PATH={ value = "/usr/lib/llvm-14/lib" ,force=true}
 # the above path can be obtained with >llvm-config --libdir<  , don't know how to do get the ouput of a command in env var
+
+[build]
+
+# Pi 0/1
+[target.pi1]
+linker = "arm-none-linux-gnueabihf-gcc"
+[target.arm-unknown-linux-gnueabihf]
+linker = "arm-none-linux-gnueabihf-gcc"
+
+# Pi 2/3/4
+[target.armv7-unknown-linux-gnueabihf]
+linker = "arm-none-linux-gnueabihf-gcc"
+
+# (Optional) Set default target for cargo build
+# target = "armv7-unknown-linux-gnueabihf"
+rustflags = ["-C", "linker=arm-none-linux-gnueabihf-gcc","-C", "target-feature=+crt-static"]

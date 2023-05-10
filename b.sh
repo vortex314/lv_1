@@ -1,8 +1,26 @@
-export DEP_LV_CONFIG_PATH=`pwd`
-export LVGL_INCLUDE=/usr/include/gtk-3.0,/usr/include,/usr/local/include,/usr/include/glib-2.0
-export LVGL_INCLUDE=$LVGL_INCLUDE,/usr/lib/x86_64-linux-gnu/glib-2.0/include,/usr/include/pango-1.0
-export LVGL_INCLUDE=$LVGL_INCLUDE,/usr/include/harfbuzz,/usr/include/cairo,/usr/include/gdk-pixbuf-2.0,/usr/include/atk-1.0,/usr/include/freetype2
-export LVGL_LINK=gtk-3,gdk-3,pangocairo-1.0,pango-1.0,harfbuzz,atk-1.0,cairo-gobject,cairo,gdk_pixbuf-2.0,gio-2.0,gobject-2.0,glib-2.0
-export LIBCLANG_PATH=$(llvm-config --libdir)
-cargo build --release 
-cargo run
+PI_IP=192.168.0.242 # Be sure to change this!
+PI_USER=lieven
+PI_HOST=pi1.local
+export SSHPASS=mg61dd
+#TARGET=armv7-unknown-linux-gnueabihf # Pi 2/3/4
+#TARGET=arm-unknown-linux-gnueabihf # Pi 0/1
+TARGET=arm-unknown-linux-musleabihf
+TRIPLE=arm-unknown-linux-musleabihf
+
+PKG_CONFIG_EXECUTABLE ${TRIPLE}-pkg-config
+PKG_CONFIG_PATH=$HOME/pi_toolchain
+PKG_CONFIG_SYSROOT_DIR=$HOME/Downloads/armv6-linux-musleabi-cross
+
+set -x
+PATH="$HOME/pi_toolchain/bin:/usr/bin:/$HOME/.cargo/bin:$HOME/Downloads/armv6-linux-musleabi-cross/bin"
+#export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-none-linux-gnueabihf-gcc
+export CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABIHF_LINKER=armv6-linux-musleabi-gcc
+# build binary
+cargo clean
+cargo build --release --target $TARGET
+# cargo build --target $TARGET
+# upload binary
+sshpass -e  rcp  ./target/$TARGET/release/pi_project $PI_HOST:.
+sshpass -e  rcp  ./target/$TARGET/release/pi_project pi2.local:.
+## execute binary
+#sshpass -e ssh $PI_HOST './pi_project'
