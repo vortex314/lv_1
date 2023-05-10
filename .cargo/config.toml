@@ -19,10 +19,8 @@ LIBCLANG_PATH={ value = "/usr/lib/llvm-14/lib" ,force=true}
 [build]
 
 # Pi 0/1
-[target.pi1]
-linker = "arm-none-linux-gnueabihf-gcc"
-[target.arm-unknown-linux-gnueabihf]
-linker = "arm-none-linux-gnueabihf-gcc"
+[target.arm-unknown-linux-gnueabi]
+linker = "armv6-linux-musleabi-gcc"
 
 # Pi 2/3/4
 [target.armv7-unknown-linux-gnueabihf]

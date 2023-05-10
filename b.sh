@@ -4,19 +4,21 @@ PI_HOST=pi1.local
 export SSHPASS=mg61dd
 #TARGET=armv7-unknown-linux-gnueabihf # Pi 2/3/4
 #TARGET=arm-unknown-linux-gnueabihf # Pi 0/1
-TARGET=arm-unknown-linux-musleabihf
-TRIPLE=arm-unknown-linux-musleabihf
+TARGET=arm-unknown-linux-gnueabi
+# TOOLCHAIN=armv6-linux-musleabihf
+TOOLCHAIN=arm-none-linux-gnueabihf
 
-PKG_CONFIG_EXECUTABLE ${TRIPLE}-pkg-config
-PKG_CONFIG_PATH=$HOME/pi_toolchain
-PKG_CONFIG_SYSROOT_DIR=$HOME/Downloads/armv6-linux-musleabi-cross
+# exec PKG_CONFIG_EXECUTABLE=${TRIPLE}-pkg-config
+export PKG_CONFIG_PATH=$HOME/rpi-sysroot
+export PKG_CONFIG_SYSROOT_DIR=$HOME/rpi-sysroot
+export CC=$TOOLCHAIN-gcc
 
 set -x
-PATH="$HOME/pi_toolchain/bin:/usr/bin:/$HOME/.cargo/bin:$HOME/Downloads/armv6-linux-musleabi-cross/bin"
+PATH="$HOME/toolchain/$TOOLCHAIN/bin:/usr/bin:/$HOME/.cargo/bin"
 #export CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-none-linux-gnueabihf-gcc
-export CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABIHF_LINKER=armv6-linux-musleabi-gcc
+export CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABIHF_LINKER=$TOOLCHAIN-gcc
 # build binary
-cargo clean
+# cargo clean
 cargo build --release --target $TARGET
 # cargo build --target $TARGET
 # upload binary

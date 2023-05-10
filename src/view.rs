@@ -7,6 +7,7 @@
 
 use crate::PublishMessage;
 use chrono::{DateTime, Local};
+use core::mem::MaybeUninit;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use cstr_core::CString;
 use gtk::glib::Date;
@@ -25,8 +26,7 @@ use lvgl::widgets::{Arc, Bar, Btn, Img, Label, Meter, MeterPart, Slider, Switch,
 use lvgl::Align::*;
 use lvgl::LvResult;
 use lvgl::{Align, Animation, Color, DrawBuffer, Event, Obj, Part, Widget};
-use lvgl_sys::LV_LAYOUT_GRID;
-use lvgl_sys::_LV_FLEX_COLUMN;
+use lvgl_sys::lv_table_get_selected_cell;
 use std::boxed::Box;
 use std::collections::HashMap;
 use std::thread::sleep;
@@ -61,26 +61,62 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
     screen_style.set_pad_right(0);
     screen.add_style(Part::Main, &mut screen_style)?;
 
-    let mut styles = Vec::< Style>::new();
+    let mut styles = Vec::<Style>::new();
 
     let mut table = Table::create(&mut screen)?;
-    let table_style = new_style(&mut styles);
-    table_style.set_width(HOR_RES as i16);
-    table_style.set_height(VER_RES as i16);
+
+    let header_style = StyleBuilder::new()
+        .set_bg_color(Color::from_rgb((200, 255, 200)))
+        .set_pad_bottom(0)
+        .set_pad_top(0)
+        .set_pad_left(0)
+        .set_pad_right(0)
+        .build(&mut styles);
+    table.add_style(Part::Items, header_style)?;
+
+    let table_style = StyleBuilder::new()
+        .set_width(HOR_RES as i16)
+        .set_height(VER_RES as i16)
+        .set_pad_bottom(0)
+        .set_pad_top(0)
+        .set_pad_left(0)
+        .set_pad_right(0)
+        .build(&mut styles);
+
     table.add_style(Part::Main, table_style)?;
+
+    //   table.add_style(Part::Indicator, header_style)?;
     table.set_col_cnt(4)?;
     table.set_row_cnt(15)?;
+    table.set_col_width(0, 300)?;
+    table.set_col_width(1, 500)?;
+    table.set_col_width(2, 100)?;
+    table.set_col_width(3, 124)?;
 
     table.set_cell_value(0, 0, &mut CString::new("Topic").unwrap())?;
     table.set_cell_value(0, 1, &CString::new("Message").unwrap())?;
     table.set_cell_value(0, 2, &CString::new("Count").unwrap())?;
     table.set_cell_value(0, 3, &CString::new("Time").unwrap())?;
-    table.on_event(|_table, _event| match _event {
+    table.on_event(|mut _table, _event| match _event {
+        Event::Clicked => {
+            let  ( r,  c) = _table.get_selected_cell().unwrap();
+            info!("Table event : {:?} row {} col {} ", _event, r, c);
+
+            /*           unsafe {
+                let mut row = MaybeUninit::<u16>::uninit();
+                let mut col = MaybeUninit::<u16>::uninit();
+                lvgl_sys::lv_table_get_selected_cell(
+                    _table.core.raw()?.as_ptr(),
+                    row.as_mut_ptr(),
+                    col.as_mut_ptr(),
+                );
+                info!("Table event : {:?} row {} col {} ", _event, row, col);
+            };*/
+        }
         _ => {
             info!("Table event : {:?}", _event);
         }
     })?;
-
 
     struct Entry {
         topic: String,
@@ -115,12 +151,15 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
                 for entry in tab.iter() {
                     table.set_cell_value(idx, 0, &CString::new(entry.1.topic.clone()).unwrap())?;
                     table.set_cell_value(idx, 1, &CString::new(entry.1.value.clone()).unwrap())?;
-                    table.set_cell_value(idx, 2, &CString::new(entry.1.count.to_string()).unwrap())?;
+                    table.set_cell_value(
+                        idx,
+                        2,
+                        &CString::new(entry.1.count.to_string()).unwrap(),
+                    )?;
                     table.set_cell_value(
                         idx,
                         3,
-                        &CString::new(entry.1.time.format("%H:%M:%S").to_string())
-                            .unwrap(),
+                        &CString::new(entry.1.time.format("%H:%M:%S").to_string()).unwrap(),
                     )?;
                     idx += 1;
                 }
@@ -133,16 +172,12 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
 
 // to avoid the leakage of the styles
 fn new_style<'a>(v: &'a mut Vec<Style>) -> &'a mut Style {
-    let _style = StyleBuilder::new()
+    StyleBuilder::new()
         .set_pad_bottom(0)
         .set_pad_top(0)
         .set_pad_left(0)
         .set_pad_right(0)
-        .build();
-    v.push(_style);
-
-    let style = v.last_mut().unwrap();
-    style
+        .build(v)
 }
 
 fn new_grid_style<'a>(
@@ -245,8 +280,9 @@ impl StyleBuilder {
         self.style.set_bg_grad_color(color);
         self
     }
-    fn build(&mut self) -> Style {
-        self.style.clone()
+    fn build<'a>(&mut self, styles: &'a mut Vec<Style>) -> &'a mut Style {
+        styles.push(self.style.clone());
+        styles.last_mut().unwrap()
     }
 }
 
