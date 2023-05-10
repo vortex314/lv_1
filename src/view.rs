@@ -74,7 +74,8 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
         .build(&mut styles);
     table.add_style(Part::Items, header_style)?;
 
-    let table_style = StyleBuilder::new()
+    let _table_style = StyleBuilder::new()
+        .set_bg_color(Color::from_rgb((255, 255, 0)))
         .set_width(HOR_RES as i16)
         .set_height(VER_RES as i16)
         .set_pad_bottom(0)
@@ -82,12 +83,11 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
         .set_pad_left(0)
         .set_pad_right(0)
         .build(&mut styles);
-
-    table.add_style(Part::Main, table_style)?;
+    table.add_style(Part::Main, _table_style)?;
 
     //   table.add_style(Part::Indicator, header_style)?;
     table.set_col_cnt(4)?;
-    table.set_row_cnt(15)?;
+    table.set_row_cnt(45)?;
     table.set_col_width(0, 300)?;
     table.set_col_width(1, 500)?;
     table.set_col_width(2, 100)?;
@@ -99,22 +99,13 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
     table.set_cell_value(0, 3, &CString::new("Time").unwrap())?;
     table.on_event(|mut _table, _event| match _event {
         Event::Clicked => {
-            let  ( r,  c) = _table.get_selected_cell().unwrap();
+            let (r, c) = _table.get_selected_cell().unwrap();
             info!("Table event : {:?} row {} col {} ", _event, r, c);
-
-            /*           unsafe {
-                let mut row = MaybeUninit::<u16>::uninit();
-                let mut col = MaybeUninit::<u16>::uninit();
-                lvgl_sys::lv_table_get_selected_cell(
-                    _table.core.raw()?.as_ptr(),
-                    row.as_mut_ptr(),
-                    col.as_mut_ptr(),
-                );
-                info!("Table event : {:?} row {} col {} ", _event, row, col);
-            };*/
         }
         _ => {
             info!("Table event : {:?}", _event);
+            let (r, c) = _table.get_selected_cell().unwrap();
+            info!("Table event : {:?} row {} col {} ", _event, r, c);
         }
     })?;
 

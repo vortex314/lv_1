@@ -20,7 +20,7 @@ LIBCLANG_PATH={ value = "/usr/lib/llvm-14/lib" ,force=true}
 
 # Pi 0/1
 [target.arm-unknown-linux-gnueabi]
-linker = "armv6-linux-musleabi-gcc"
+linker = "arm-linux-musleabi-gcc"
 
 # Pi 2/3/4
 [target.armv7-unknown-linux-gnueabihf]
@@ -28,4 +28,4 @@ linker = "arm-none-linux-gnueabihf-gcc"
 
 # (Optional) Set default target for cargo build
 # target = "armv7-unknown-linux-gnueabihf"
-rustflags = ["-C", "linker=arm-none-linux-gnueabihf-gcc","-C", "target-feature=+crt-static"]
+rustflags = ["-C", "linker=arm-linux-gnueabihf-gcc","-C", "target-feature=+crt-static"]
