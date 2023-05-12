@@ -16,8 +16,10 @@ use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use lvgl::input_device::InputDriver;
+use lvgl::lv_drv_disp_fbdev;
 use lvgl::lv_drv_disp_gtk;
 use lvgl::lv_drv_disp_sdl;
+use lvgl::lv_drv_input_pointer_evdev;
 use lvgl::lv_drv_input_pointer_gtk;
 use lvgl::lv_drv_input_pointer_sdl;
 use lvgl::style::{CoordDesc, GridAlign, Layout, Opacity, Style};
@@ -25,7 +27,8 @@ use lvgl::widgets::MeterPart::Needle;
 use lvgl::widgets::{Arc, Bar, Btn, Img, Label, Meter, MeterPart, Slider, Switch, Table, Textarea};
 use lvgl::Align::*;
 use lvgl::LvResult;
-use lvgl::{Align, Animation, Color, DrawBuffer, Event, Obj, Part, Widget};
+use lvgl::{Align, Animation, Color, DrawBuffer,Display, Event, Obj, Part, Widget};
+use lvgl::input_device::pointer::Pointer;
 use lvgl_sys::lv_table_get_selected_cell;
 use std::boxed::Box;
 use std::collections::HashMap;
@@ -34,10 +37,10 @@ use std::time::Duration;
 use std::time::Instant;
 use yaml_rust::YamlLoader;
 
-pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
-    info!("Starting up");
-    const HOR_RES: u32 = 1024;
-    const VER_RES: u32 = 768;
+#[cfg(target_arch = "arm")]
+fn display_init() -> LvResult<(Display,Pointer)>{
+    info!("Initializing GTK display");
+
     const COL_COUNT: u32 = 24;
     const ROW_COUNT: u32 = 24;
     const COL_WIDTH: u32 = HOR_RES / COL_COUNT;
@@ -45,12 +48,38 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
     const SQUARE_FACTOR: f64 = HOR_RES as f64 / VER_RES as f64;
 
     let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
-    //   let display = lv_drv_disp_sdl!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
-    //   let _input = lv_drv_input_pointer_sdl!(display)?;
+
+    let display = lv_drv_disp_fbdev!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+    let _input = lv_drv_input_pointer_evdev!(display)?;
+    Ok((display,_input))
+}
+
+const HOR_RES: u32 = 1024;
+const VER_RES: u32 = 768;
+
+#[cfg(not(target_arch = "arm"))]
+fn display_init() -> LvResult<(Display,Pointer)> {
+    info!("Initializing GTK display");
+
+    const COL_COUNT: u32 = 24;
+    const ROW_COUNT: u32 = 24;
+    const COL_WIDTH: u32 = HOR_RES / COL_COUNT;
+    const ROW_HEIGHT: u32 = VER_RES / ROW_COUNT;
+    const SQUARE_FACTOR: f64 = HOR_RES as f64 / VER_RES as f64;
+
+    let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
     let display = lv_drv_disp_gtk!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
-    let _input = lv_drv_input_pointer_gtk!(display)?;
-    //   let display = lv_drv_disp_fb!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
-    //   let _input = lv_drv_input_pointer_fb!(display)?;
+    let input = lv_drv_input_pointer_gtk!(display)?;
+    Ok((display,input))
+}
+/*
+fn display_sdl_init(){
+    let display = lv_drv_disp_sdl!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+    let _input = lv_drv_input_pointer_sdl!(display)?;
+}
+*/
+pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
+    let (display,pointer) = display_init().unwrap();
 
     // Create screen and widgets
     let mut screen = display.get_scr_act()?;
