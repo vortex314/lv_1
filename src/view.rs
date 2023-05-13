@@ -39,7 +39,7 @@ use yaml_rust::YamlLoader;
 
 #[cfg(target_arch = "arm")]
 fn display_init() -> LvResult<(Display,Pointer)>{
-    info!("Initializing GTK display");
+    info!("Initializing Raspberry Pi  display");
 
     const COL_COUNT: u32 = 24;
     const ROW_COUNT: u32 = 24;

@@ -23,3 +23,5 @@ sudo apt install ligtk-3-dev
 ### References
 https://crates.io/crates/cc => C flags passed on by Rust
 https://forum.qt.io/topic/106753/qt-raspberry-pi-cross-compilation-make-issue/2
+https://sourceforge.net/projects/raspberry-pi-cross-compilers/postdownload 
+- choose pi1 and rename to arm-linux-gnueabihf

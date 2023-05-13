@@ -16,36 +16,29 @@ LVGL_LINK="gtk-3,gdk-3,pangocairo-1.0,pango-1.0,harfbuzz,atk-1.0,cairo-gobject,c
 LIBCLANG_PATH={ value = "/usr/lib/llvm-14/lib" ,force=true}
 # the above path can be obtained with >llvm-config --libdir<  , don't know how to do get the ouput of a command in env var
 PKG_CONFIG_SYSROOT_DIR="~/rpi-sysroot"
-PKG_CONFIG_PATH="~/rpi-sysroot"
+PKG_CONFIG_ALLOW_CROSS="1"
+# PKG_CONFIG_PATH="~/rpi-sysroot"
 #PKG_CONFIG_LIBDIR=/usr/lib/pkgconfig:/usr/share/pkgconfig/:${TARGET_SYSROOT}/usr/lib/aarch64-linux-gnu/pkgconfig:${TARGET_SYSROOT}/usr/lib/pkgconfig)
 
-CMAKE_SYSROOT="~/rpi-sysroot"
-CMAKE_C_FLAGS= "-I~/rpi-sysroot/usr/include"
+# CMAKE_SYSROOT="~/rpi-sysroot"
+# CMAKE_C_FLAGS= "-I~/rpi-sysroot/usr/include"
 
 [build]
 
 # Pi 0/1
 [target.arm-unknown-linux-gnueabihf]
-linker = "arm-none-linux-gnueabihf-gcc"
+linker = "/home/lieven/toolchain/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
 rustflags = [
-    "-C", "linker=arm-linux-gnueabihf-gcc",
     "-C", "link-arg=--sysroot=/home/lieven/rpi-sysroot",
     "-C", "link-arg=-L/home/lieven/rpi-sysroot/usr/lib/arm-linux-gnueabihf",
+    "-C", "link-arg=-L/home/lieven/rpi-sysroot/usr/lib",
+    "-C", "link-arg=-L/home/lieven/toolchain/arm-linux-gnueabihf/arm-linux-gnueabihf/libc/usr/lib",
     "-C", "link-arg=-lpthread",
     ]
-rustc-env = {CMAKE_SYSROOT = "~/rpi-sysroot",PKG_CONFIG_PATH="~/rpi-sysroot",PKG_CONFIG_SYSROOT_DIR="~/rpi-sysroot"} # for lvgl c build 
-rustc-flags = { sysroot="~/rpi-sysroot" }
+# rustc-env = {PKG_CONFIG_ALLOW_CROSS="1",PKG_CONFIG_SYSROOT_DIR="~/rpi-sysroot"} # for lvgl c build 
+# rustc-flags = { sysroot="~/rpi-sysroot" }
 # rustc-cfg = ['key="value"']
 # rustc-link-lib = ["foo"]
 # rustc-cdylib-link-arg = ["…"]
 
-
-# Pi 2/3/4
-[target.armv7-unknown-linux-gnueabihf]
-linker = "arm-none-linux-gnueabihf-gcc"
-
-# (Optional) Set default target for cargo build
-# target = "armv7-unknown-linux-gnueabihf"
-
-# rustflags = ["-C", "linker=arm-linux-gnueabihf-gcc","-C", "target-feature=+crt-static"]
-#     "-C", "target-feature=+crt-static",
+ 
