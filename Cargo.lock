@@ -878,7 +878,7 @@ dependencies = [
 [[package]]
 name = "lvgl"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=master#1a47eda184915d8fcab6572a52ec0feb0552cb9f"
+source = "git+https://github.com/lvgl/lv_binding_rust#1a47eda184915d8fcab6572a52ec0feb0552cb9f"
 dependencies = [
  "bitflags 2.2.1",
  "cstr_core",
@@ -895,7 +895,7 @@ dependencies = [
 [[package]]
 name = "lvgl-codegen"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=master#1a47eda184915d8fcab6572a52ec0feb0552cb9f"
+source = "git+https://github.com/lvgl/lv_binding_rust#1a47eda184915d8fcab6572a52ec0feb0552cb9f"
 dependencies = [
  "Inflector",
  "lazy_static",
@@ -908,7 +908,7 @@ dependencies = [
 [[package]]
 name = "lvgl-sys"
 version = "0.6.2"
-source = "git+https://github.com/lvgl/lv_binding_rust?branch=master#1a47eda184915d8fcab6572a52ec0feb0552cb9f"
+source = "git+https://github.com/lvgl/lv_binding_rust#1a47eda184915d8fcab6572a52ec0feb0552cb9f"
 dependencies = [
  "bindgen",
  "cc",
