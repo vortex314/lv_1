@@ -4,7 +4,7 @@ mod pub_message;
 mod redis_receiver;
 mod view;
 
-pub use pub_message::PublishMessage;
+pub use pub_message::{CommandMessage, Message, PublishMessage, SubscribeMessage};
 pub use redis_receiver::do_redis;
 pub use view::do_view;
 
@@ -17,10 +17,10 @@ extern crate redis;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use log::info;
 use log::LevelFilter;
+use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
-use log4rs::append::console::ConsoleAppender;
 
 use std::thread;
 use std::time::{Duration, SystemTime};
@@ -29,14 +29,15 @@ fn main() {
     set_logging();
     info!("Starting up");
 
-    let (send, recv) = bounded::<PublishMessage>(200);
+    let (send, recv) = bounded::<Message>(200);
+    let send2 =send.clone();
 
     thread::spawn(move || {
         info!("Starting view ");
-        do_view(recv).unwrap();
+        do_view(send.clone(), recv).unwrap();
         info!("Started view");
     });
-    let rc = do_redis(send);
+    let rc = do_redis(send2);
 }
 
 fn set_logging() {

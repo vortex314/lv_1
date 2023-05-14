@@ -17,17 +17,12 @@ LIBCLANG_PATH={ value = "/usr/lib/llvm-14/lib" ,force=true}
 # the above path can be obtained with >llvm-config --libdir<  , don't know how to do get the ouput of a command in env var
 PKG_CONFIG_SYSROOT_DIR="~/rpi-sysroot"
 PKG_CONFIG_ALLOW_CROSS="1"
-# PKG_CONFIG_PATH="~/rpi-sysroot"
-#PKG_CONFIG_LIBDIR=/usr/lib/pkgconfig:/usr/share/pkgconfig/:${TARGET_SYSROOT}/usr/lib/aarch64-linux-gnu/pkgconfig:${TARGET_SYSROOT}/usr/lib/pkgconfig)
-
-# CMAKE_SYSROOT="~/rpi-sysroot"
-# CMAKE_C_FLAGS= "-I~/rpi-sysroot/usr/include"
 
 [build]
 
 # Pi 0/1
 [target.arm-unknown-linux-gnueabihf]
-linker = "/home/lieven/toolchain/arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc"
+linker = "arm-linux-gnueabihf-gcc"
 rustflags = [
     "-C", "link-arg=--sysroot=/home/lieven/rpi-sysroot",
     "-C", "link-arg=-L/home/lieven/rpi-sysroot/usr/lib/arm-linux-gnueabihf",

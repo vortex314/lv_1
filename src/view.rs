@@ -5,7 +5,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-use crate::PublishMessage;
+use crate::{CommandMessage, Message, PublishMessage, SubscribeMessage};
 use chrono::{DateTime, Local};
 use core::mem::MaybeUninit;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
@@ -15,8 +15,9 @@ use log::{info, warn, LevelFilter};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
+use lvgl::input_device::pointer::Pointer;
 use lvgl::input_device::InputDriver;
-use lvgl::lv_drv_disp_fbdev;
+use lvgl::{lv_drv_disp_fbdev, LvError};
 use lvgl::lv_drv_disp_gtk;
 use lvgl::lv_drv_disp_sdl;
 use lvgl::lv_drv_input_pointer_evdev;
@@ -27,19 +28,39 @@ use lvgl::widgets::MeterPart::Needle;
 use lvgl::widgets::{Arc, Bar, Btn, Img, Label, Meter, MeterPart, Slider, Switch, Table, Textarea};
 use lvgl::Align::*;
 use lvgl::LvResult;
-use lvgl::{Align, Animation, Color, DrawBuffer,Display, Event, Obj, Part, Widget};
-use lvgl::input_device::pointer::Pointer;
+use lvgl::{Align, Animation, Color, Display, DrawBuffer, Event, Obj, Part, Widget};
 use lvgl_sys::lv_table_get_selected_cell;
 use std::boxed::Box;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
 use yaml_rust::YamlLoader;
 
+const HOR_RES: u32 = 1024;
+const VER_RES: u32 = 768;
+
+#[derive(Debug)]
+#[derive(Clone)]
+
+enum Sorting {
+    OnTopic,
+    OnValue,
+    OnCount,
+    OnTime,
+}
+
+struct Entry {
+    topic: String,
+    value: String,
+    time: DateTime<Local>,
+    count: i64,
+}
+
 #[cfg(target_arch = "arm")]
-fn display_init() -> LvResult<(Display,Pointer)>{
-    info!("Initializing Raspberry Pi  display");
+fn display_init() -> LvResult<(Display, Pointer)> {
+    info!("Initializing Raspberry Pi display");
 
     const COL_COUNT: u32 = 24;
     const ROW_COUNT: u32 = 24;
@@ -48,17 +69,14 @@ fn display_init() -> LvResult<(Display,Pointer)>{
     const SQUARE_FACTOR: f64 = HOR_RES as f64 / VER_RES as f64;
 
     let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
-
-    let display = lv_drv_disp_fbdev!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
-    let _input = lv_drv_input_pointer_evdev!(display)?;
-    Ok((display,_input))
+    let display = lv_drv_disp_fbdev!(buffer, HOR_RES, VER_RES)?; // Use this for fb0 (Raspberry Pi)
+    let _input = lv_drv_input_pointer_evdev!(display)?; // check which evdev /dev/input/eventXXX
+    info!("Display initialized resolution {} x {}", HOR_RES, VER_RES);
+    Ok((display, _input))
 }
 
-const HOR_RES: u32 = 1024;
-const VER_RES: u32 = 768;
-
 #[cfg(not(target_arch = "arm"))]
-fn display_init() -> LvResult<(Display,Pointer)> {
+fn display_init() -> LvResult<(Display, Pointer)> {
     info!("Initializing GTK display");
 
     const COL_COUNT: u32 = 24;
@@ -70,7 +88,8 @@ fn display_init() -> LvResult<(Display,Pointer)> {
     let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
     let display = lv_drv_disp_gtk!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
     let input = lv_drv_input_pointer_gtk!(display)?;
-    Ok((display,input))
+    info!("Display initialized resolution {} x {}", HOR_RES, VER_RES);
+    Ok((display, input))
 }
 /*
 fn display_sdl_init(){
@@ -78,24 +97,29 @@ fn display_sdl_init(){
     let _input = lv_drv_input_pointer_sdl!(display)?;
 }
 */
-pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
-    let (display,pointer) = display_init().unwrap();
+pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
+    let mut styles = Vec::<Style>::new();
+
+    let (display, pointer) = display_init().unwrap();
 
     // Create screen and widgets
     let mut screen = display.get_scr_act()?;
-    let mut screen_style = Style::default();
-    screen_style.set_pad_bottom(0);
-    screen_style.set_pad_top(0);
-    screen_style.set_pad_left(0);
-    screen_style.set_pad_right(0);
+    let mut screen_style = StyleBuilder::new()
+        .set_pad_bottom(0)
+        .set_pad_top(0)
+        .set_pad_left(0)
+        .set_pad_right(0)
+        .set_width(HOR_RES as i16)
+        .set_height(VER_RES as i16)
+        .build(&mut styles);
     screen.add_style(Part::Main, &mut screen_style)?;
-
-    let mut styles = Vec::<Style>::new();
 
     let mut table = Table::create(&mut screen)?;
 
     let header_style = StyleBuilder::new()
-        .set_bg_color(Color::from_rgb((200, 255, 200)))
+        .set_bg_color(Color::from_rgb((0, 0, 0)))
+        .set_text_color(Color::from_rgb((0, 255, 0)))
+        .set_border_width(0)
         .set_pad_bottom(0)
         .set_pad_top(0)
         .set_pad_left(0)
@@ -104,7 +128,7 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
     table.add_style(Part::Items, header_style)?;
 
     let _table_style = StyleBuilder::new()
-        .set_bg_color(Color::from_rgb((255, 255, 0)))
+        .set_bg_color(Color::from_rgb((255, 255, 255)))
         .set_width(HOR_RES as i16)
         .set_height(VER_RES as i16)
         .set_pad_bottom(0)
@@ -126,24 +150,26 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
     table.set_cell_value(0, 1, &CString::new("Message").unwrap())?;
     table.set_cell_value(0, 2, &CString::new("Count").unwrap())?;
     table.set_cell_value(0, 3, &CString::new("Time").unwrap())?;
+
+    let mut sorting = Sorting::OnTopic;
     table.on_event(|mut _table, _event| match _event {
-        Event::Clicked => {
-            let (r, c) = _table.get_selected_cell().unwrap();
-            info!("Table event : {:?} row {} col {} ", _event, r, c);
+        Event::ValueChanged => {
+            let (row, col) = _table.get_selected_cell().unwrap();
+            if row == 0 {
+                match col {
+                    0 => sorting = Sorting::OnTopic,
+                    1 => sorting = Sorting::OnValue,
+                    2 => sorting = Sorting::OnCount,
+                    3 => sorting = Sorting::OnTime,
+                    _ => {}
+                }
+                info!("Sorting on {:?}", sorting);
+                send.send(Message::Refresh).unwrap();
+            }
         }
-        _ => {
-            info!("Table event : {:?}", _event);
-            let (r, c) = _table.get_selected_cell().unwrap();
-            info!("Table event : {:?} row {} col {} ", _event, r, c);
-        }
+        _ => {}
     })?;
 
-    struct Entry {
-        topic: String,
-        value: String,
-        time: DateTime<Local>,
-        count: i64,
-    }
     let mut tab = HashMap::<String, Entry>::new();
 
     info!("start loop");
@@ -152,42 +178,74 @@ pub fn do_view(recv: Receiver<PublishMessage>) -> LvResult<()> {
         lvgl::task_handler();
         let res = recv.recv_timeout(Duration::from_millis(15));
         match res {
-            Ok(msg) => {
-                if tab.contains_key(&msg.topic) {
-                    let mut entry = tab.get_mut(&msg.topic).unwrap();
-                    entry.value = msg.value.clone();
-                    entry.time = msg.time;
-                    entry.count += 1;
-                } else {
-                    let entry = Entry {
-                        topic: msg.topic.clone(),
-                        value: msg.value.clone(),
-                        time: msg.time,
-                        count: 1,
-                    };
-                    tab.insert(msg.topic.clone(), entry);
-                }
-                let mut idx = 1;
-                for entry in tab.iter() {
-                    table.set_cell_value(idx, 0, &CString::new(entry.1.topic.clone()).unwrap())?;
-                    table.set_cell_value(idx, 1, &CString::new(entry.1.value.clone()).unwrap())?;
-                    table.set_cell_value(
-                        idx,
-                        2,
-                        &CString::new(entry.1.count.to_string()).unwrap(),
-                    )?;
-                    table.set_cell_value(
-                        idx,
-                        3,
-                        &CString::new(entry.1.time.format("%H:%M:%S").to_string()).unwrap(),
-                    )?;
-                    idx += 1;
-                }
+            Ok(message) => {
+                match message {
+                    Message::Refresh => {
+                        update_table_view(&mut table, &tab, sorting.clone()).unwrap();
+                    }
+                    Message::Publish ( msg ) => {
+                        update_table(& mut tab, msg);
+                        update_table_view(&mut table, &tab, sorting.clone()).unwrap();
+                    }
+                    _ => {}
+                };
             }
             Err(e) => {}
         }
         lvgl::tick_inc(Instant::now().duration_since(start));
     }
+}
+
+fn update_table(tab: & mut HashMap<String, Entry>, msg: PublishMessage) {
+    if tab.contains_key(&msg.topic) {
+        let mut entry = tab.get_mut(&msg.topic).unwrap();
+        entry.value = msg.value.clone();
+        entry.time = msg.time;
+        entry.count += 1;
+    } else {
+        let entry = Entry {
+            topic: msg.topic.clone(),
+            value: msg.value.clone(),
+            time: msg.time,
+            count: 1,
+        };
+        tab.insert(msg.topic.clone(), entry);
+    }
+}
+
+fn update_table_view(
+    table: &mut Table,
+    tab: &HashMap<String, Entry>,
+    sorting: Sorting,
+) -> Result<(), LvError> {
+    let mut idx = 1;
+    let mut sorted: Vec<_> = tab.iter().collect();
+    match sorting {
+        Sorting::OnTopic => {
+            sorted.sort_by(|a, b| a.1.topic.cmp(&b.1.topic));
+        }
+        Sorting::OnValue => {
+            sorted.sort_by(|a, b| a.1.value.cmp(&b.1.value));
+        }
+        Sorting::OnCount => {
+            sorted.sort_by(|a, b| a.1.count.cmp(&b.1.count));
+        }
+        Sorting::OnTime => {
+            sorted.sort_by(|a, b| a.1.time.cmp(&b.1.time));
+        }
+    }
+    for entry in sorted.iter() {
+        table.set_cell_value(idx, 0, &CString::new(entry.1.topic.clone()).unwrap())?;
+        table.set_cell_value(idx, 1, &CString::new(entry.1.value.clone()).unwrap())?;
+        table.set_cell_value(idx, 2, &CString::new(entry.1.count.to_string()).unwrap())?;
+        table.set_cell_value(
+            idx,
+            3,
+            &CString::new(entry.1.time.format("%H:%M:%S").to_string()).unwrap(),
+        )?;
+        idx += 1;
+    }
+    Ok(())
 }
 
 // to avoid the leakage of the styles
@@ -298,6 +356,14 @@ impl StyleBuilder {
     }
     fn set_bg_grad_color(&mut self, color: Color) -> &mut StyleBuilder {
         self.style.set_bg_grad_color(color);
+        self
+    }
+    fn set_text_color(&mut self, color: Color) -> &mut StyleBuilder {
+        self.style.set_text_color(color);
+        self
+    }
+    fn set_border_width(&mut self, width: i16) -> &mut StyleBuilder {
+        self.style.set_border_width(width);
         self
     }
     fn build<'a>(&mut self, styles: &'a mut Vec<Style>) -> &'a mut Style {
