@@ -1,4 +1,4 @@
-#[allow(unused_labels)]
+#![allow(unused_labels)]
 extern crate redis;
 
 use crate::Message;

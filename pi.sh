@@ -21,7 +21,7 @@ $SYSROOT/usr/include/gdk-pixbuf-2.0,\
 $SYSROOT/usr/include/atk-1.0,\
 $SYSROOT/usr/include/freetype2"
 export LVGL_LINK="gtk-3,gdk-3,pangocairo-1.0,pango-1.0,harfbuzz,atk-1.0,cairo-gobject,cairo,gdk_pixbuf-2.0,gio-2.0,gobject-2.0,glib-2.0,z,gmodule-2.0,selinux,pcre2-8,mount,resolv,ffi,pcre,blkid"
-# export LIBCLANG_PATH=`llvm-config --libdir`
+export LIBCLANG_PATH=`llvm-config --libdir`
 ## export CC=$TOOLCHAIN_DIR/bin/$TOOLCHAIN-gcc
 ## export CFLAGS="--sysroot=$SYSROOT -fPIC -march=armv6 -marm -mfpu=vfp -gdwarf-4 -fno-omit-frame-pointer"
 ## export CFLAGS_arm_linux_gnueabihf="--sysroot=$SYSROOT -fPIC -march=armv6 -marm -mfpu=vfp -gdwarf-4 -fno-omit-frame-pointer"
