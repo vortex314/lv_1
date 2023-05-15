@@ -11,14 +11,21 @@ LVGL_INCLUDE = """
 /usr/include/cairo,\
 /usr/include/gdk-pixbuf-2.0,\
 /usr/include/atk-1.0,\
-/usr/include/freetype2"""
+/usr/include/freetype2,\
+/opt/homebrew/Cellar/sdl2/2.26.5/include/"""
 LVGL_LINK="gtk-3,gdk-3,pangocairo-1.0,pango-1.0,harfbuzz,atk-1.0,cairo-gobject,cairo,gdk_pixbuf-2.0,gio-2.0,gobject-2.0,glib-2.0,SDL2,SDL"
-LIBCLANG_PATH={ value = "/usr/lib/llvm-14/lib" ,force=true}
+# LIBCLANG_PATH={ value = "/usr/lib/llvm-14/lib" ,force=true}
+LIBCLANG_PATH={ value = "/Library/Developer/CommandLineTools/usr/lib/" ,force=true}
 # the above path can be obtained with >llvm-config --libdir<  , don't know how to do get the ouput of a command in env var
 PKG_CONFIG_SYSROOT_DIR="~/rpi-sysroot"
 PKG_CONFIG_ALLOW_CROSS="1"
 
 [build]
+[target.aarch64-apple-darwin]
+rustflags = [
+    "-C", "link-arg=-L/opt/homebrew/lib",
+    "-C", "link-arg=-lpthread",
+    ]
 
 # Pi 0/1
 [target.arm-unknown-linux-gnueabihf]

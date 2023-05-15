@@ -4,7 +4,7 @@ mod pub_message;
 mod redis_receiver;
 mod view;
 
-pub use pub_message::{CommandMessage, Message, PublishMessage, SubscribeMessage};
+pub use pub_message::{Message};
 pub use redis_receiver::do_redis;
 pub use view::do_view;
 
@@ -24,7 +24,23 @@ use log4rs::encode::pattern::PatternEncoder;
 
 use std::thread;
 use std::time::{Duration, SystemTime};
+/* 
+//struct Source<T> { }
+trait Sink<T> {
+    fn on(t:&T);
+}
+trait  Source<T> {
+    fn emit(t:&T);
+    fn subscribe(sink:Sink<T>);
+}
 
+use std::ops::ShrAssign;
+
+impl ShrAssign for Source<T> {
+    fn shr_assign(&mut self, rhs: Sink<T>) {
+        self.subscribe(rhs );
+    }
+};*/
 fn main() {
     set_logging();
     info!("Starting up");

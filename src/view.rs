@@ -5,12 +5,12 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-use crate::{CommandMessage, Message, PublishMessage, SubscribeMessage};
+use crate::{Message};
 use chrono::{DateTime, Local};
 use core::mem::MaybeUninit;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use cstr_core::CString;
-use gtk::glib::Date;
+// use gtk::glib::Date;
 use log::{info, warn, LevelFilter};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
@@ -75,7 +75,7 @@ fn display_init() -> LvResult<(Display, Pointer)> {
     Ok((display, _input))
 }
 
-#[cfg(not(target_arch = "arm"))]
+#[cfg(target_arch = "x86_64")]
 fn display_init() -> LvResult<(Display, Pointer)> {
     info!("Initializing GTK display");
 
@@ -88,6 +88,23 @@ fn display_init() -> LvResult<(Display, Pointer)> {
     let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
     let display = lv_drv_disp_gtk!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
     let input = lv_drv_input_pointer_gtk!(display)?;
+    info!("Display initialized resolution {} x {}", HOR_RES, VER_RES);
+    Ok((display, input))
+}
+
+#[cfg(target_arch = "aarch64")]
+fn display_init() -> LvResult<(Display, Pointer)> {
+    info!("Initializing SDL2 display");
+
+    const COL_COUNT: u32 = 24;
+    const ROW_COUNT: u32 = 24;
+    const COL_WIDTH: u32 = HOR_RES / COL_COUNT;
+    const ROW_HEIGHT: u32 = VER_RES / ROW_COUNT;
+    const SQUARE_FACTOR: f64 = HOR_RES as f64 / VER_RES as f64;
+
+    let buffer = DrawBuffer::<{ (HOR_RES * VER_RES / 10) as usize }>::default();
+    let display = lv_drv_disp_sdl!(buffer, HOR_RES, VER_RES)?; // Use this for GTK (Linux)
+    let input = lv_drv_input_pointer_sdl!(display)?;
     info!("Display initialized resolution {} x {}", HOR_RES, VER_RES);
     Ok((display, input))
 }
@@ -183,8 +200,8 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
                     Message::Refresh => {
                         update_table_view(&mut table, &tab, sorting.clone()).unwrap();
                     }
-                    Message::Publish ( msg ) => {
-                        update_table(& mut tab, msg);
+                    Message::Publish { topic, value, time } => {
+                        update_table(& mut tab, Message::Publish { topic, value, time});
                         update_table_view(&mut table, &tab, sorting.clone()).unwrap();
                     }
                     _ => {}
@@ -196,21 +213,27 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
     }
 }
 
-fn update_table(tab: & mut HashMap<String, Entry>, msg: PublishMessage) {
-    if tab.contains_key(&msg.topic) {
-        let mut entry = tab.get_mut(&msg.topic).unwrap();
-        entry.value = msg.value.clone();
-        entry.time = msg.time;
-        entry.count += 1;
-    } else {
-        let entry = Entry {
-            topic: msg.topic.clone(),
-            value: msg.value.clone(),
-            time: msg.time,
-            count: 1,
-        };
-        tab.insert(msg.topic.clone(), entry);
+fn update_table(tab: & mut HashMap<String, Entry>, m: crate::Message) {
+    match m {
+        Message::Publish { topic , value, time } => {
+            if tab.contains_key(&topic) {
+                let mut entry = tab.get_mut(&topic).unwrap();
+                entry.value = value.clone(); 
+                entry.time = time;
+                entry.count += 1;
+            } else {
+                let entry = Entry {
+                    topic: topic.clone(),
+                    value: value.clone(),
+                    time: time,
+                    count: 1,
+                };
+                tab.insert(topic.clone(), entry);
+            }
+        }
+        _ => {}
     }
+    
 }
 
 fn update_table_view(
