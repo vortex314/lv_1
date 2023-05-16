@@ -5,7 +5,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-use crate::{Message};
+use crate::Message;
 use chrono::{DateTime, Local};
 use core::mem::MaybeUninit;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
@@ -17,7 +17,6 @@ use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use lvgl::input_device::pointer::Pointer;
 use lvgl::input_device::InputDriver;
-use lvgl::{lv_drv_disp_fbdev, LvError};
 use lvgl::lv_drv_disp_gtk;
 use lvgl::lv_drv_disp_sdl;
 use lvgl::lv_drv_input_pointer_evdev;
@@ -28,6 +27,7 @@ use lvgl::widgets::MeterPart::Needle;
 use lvgl::widgets::{Arc, Bar, Btn, Img, Label, Meter, MeterPart, Slider, Switch, Table, Textarea};
 use lvgl::Align::*;
 use lvgl::LvResult;
+use lvgl::{lv_drv_disp_fbdev, LvError};
 use lvgl::{Align, Animation, Color, Display, DrawBuffer, Event, Obj, Part, Widget};
 use lvgl_sys::lv_table_get_selected_cell;
 use std::boxed::Box;
@@ -41,8 +41,7 @@ use yaml_rust::YamlLoader;
 const HOR_RES: u32 = 1024;
 const VER_RES: u32 = 768;
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 
 enum Sorting {
     OnTopic,
@@ -184,7 +183,9 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
                 send.send(Message::Refresh).unwrap();
             }
         }
-        _ => {}
+        _ => {
+            info!("Event {:?}", _event);
+        }
     })?;
 
     let mut tab = HashMap::<String, Entry>::new();
@@ -201,7 +202,7 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
                         update_table_view(&mut table, &tab, sorting.clone()).unwrap();
                     }
                     Message::Publish { topic, value, time } => {
-                        update_table(& mut tab, Message::Publish { topic, value, time});
+                        update_table(&mut tab, Message::Publish { topic, value, time });
                         update_table_view(&mut table, &tab, sorting.clone()).unwrap();
                     }
                     _ => {}
@@ -213,12 +214,12 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
     }
 }
 
-fn update_table(tab: & mut HashMap<String, Entry>, m: crate::Message) {
+fn update_table(tab: &mut HashMap<String, Entry>, m: crate::Message) {
     match m {
-        Message::Publish { topic , value, time } => {
+        Message::Publish { topic, value, time } => {
             if tab.contains_key(&topic) {
                 let mut entry = tab.get_mut(&topic).unwrap();
-                entry.value = value.clone(); 
+                entry.value = value.clone();
                 entry.time = time;
                 entry.count += 1;
             } else {
@@ -233,7 +234,6 @@ fn update_table(tab: & mut HashMap<String, Entry>, m: crate::Message) {
         }
         _ => {}
     }
-    
 }
 
 fn update_table_view(
