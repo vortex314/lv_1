@@ -1,15 +1,16 @@
 #![allow(unused_labels)]
 extern crate redis;
-
-use crate::Message;
+use crate::vc;
+use vc::message::Message;
 use chrono::{DateTime, Local, Utc};
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use log::info;
 use redis::{Cmd, Commands, ConnectionLike, RedisError, RedisResult};
 use std::thread;
 use std::time::Duration;
+use pub_sub::PubSub;
 
-pub fn do_redis(sender: Sender<Message>) -> redis::RedisResult<()> {
+pub fn do_redis(channel: PubSub<Message>) -> redis::RedisResult<()> {
     info!("Starting redis receiver... ");
     
 
@@ -25,7 +26,7 @@ pub fn do_redis(sender: Sender<Message>) -> redis::RedisResult<()> {
         'receive : loop {
             match pubsub.get_message() {
                 Ok(msg) => {
-                    sender
+                    channel
                         .send(Message::Publish {
                             topic: msg.get_channel_name().to_string(),
                             value: msg.get_payload().unwrap(),

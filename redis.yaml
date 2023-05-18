@@ -1,0 +1,17 @@
+---
+screen:
+  - name: "Motor"
+    rows: 12
+    cols: 24
+
+    label_latency:
+      x: 0
+      y: 0
+      w: 2
+      h: 1
+      src: "src/ESP32-44592/sys/latency"
+      value: "--"
+      timeout: 2000
+      prefix: "Latency : "
+      suffix: "ms"
+

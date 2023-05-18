@@ -517,6 +517,7 @@ dependencies = [
  "log4rs",
  "lvgl",
  "lvgl-sys",
+ "pub-sub",
  "rand",
  "redis",
  "sdl2",
@@ -688,6 +689,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b63bdb0cd06f1f4dedf69b254734f9b45af66e4a031e42a7480257d9898b435"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "pub-sub"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fb2d6fe8cd1b1aacecb5ac1cfecdc38fdb834425626668b2de2bbd775d79dc0"
+dependencies = [
+ "uuid",
 ]
 
 [[package]]
@@ -1008,6 +1018,15 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
+]
+
+[[package]]
+name = "uuid"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
+dependencies = [
+ "getrandom",
 ]
 
 [[package]]

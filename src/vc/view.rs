@@ -5,6 +5,9 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
+
+use pub_sub::PubSub;
+use crate::vc::vc_label::VcLabel;
 use crate::Message;
 use chrono::{DateTime, Local};
 use core::mem::MaybeUninit;
@@ -36,6 +39,8 @@ use std::hash::Hash;
 use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
+use std::thread;
+
 use yaml_rust::YamlLoader;
 
 const HOR_RES: u32 = 1024;
@@ -113,7 +118,7 @@ fn display_sdl_init(){
     let _input = lv_drv_input_pointer_sdl!(display)?;
 }
 */
-pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
+pub fn do_view(channel: PubSub<Message>) -> LvResult<()> {
     let mut styles = Vec::<Style>::new();
 
     let (display, pointer) = display_init().unwrap();
@@ -168,6 +173,7 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
     table.set_cell_value(0, 3, &CString::new("Time").unwrap())?;
 
     let mut sorting = Sorting::OnTopic;
+    let  recv = channel.subscribe();
     table.on_event(|mut _table, _event| match _event {
         Event::ValueChanged => {
             let (row, col) = _table.get_selected_cell().unwrap();
@@ -180,12 +186,64 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
                     _ => {}
                 }
                 info!("Sorting on {:?}", sorting);
-                send.send(Message::Refresh).unwrap();
+                channel.send(Message::Refresh).unwrap();
             }
         }
-        _ => {
-            info!("Event {:?}", _event);
+        Event::DrawPartBegin => {
+
         }
+        _ => {
+        }
+    })?;
+
+    let mut  bar = Bar::create(&mut screen)?;
+    let mut bar_text = Label::create(& mut bar)?;
+    bar_text.set_text(&CString::new("Time").unwrap())?;
+    let bar_text_style = StyleBuilder::new()
+        .set_bg_color(Color::from_rgb((0, 0, 0)))
+        .set_text_color(Color::from_rgb((255,255,255)))
+        .set_align(Align::Center)
+        .set_border_width(0)
+        .set_pad_bottom(0)
+        .set_pad_top(0)
+        .set_pad_left(0)
+        .set_pad_right(0)
+        .build(&mut styles);
+    bar_text.add_style(Part::Main, bar_text_style)?;
+    bar.set_size(200, 20)?;
+    bar.set_align( Align::Center, 0, 0)?;
+    bar.set_value(50,Animation::OFF)?;
+    let  bar_style = StyleBuilder::new()
+        .set_bg_color(Color::from_rgb((0, 255, 0)))
+        .set_border_width(1)
+        .set_pad_bottom(0)
+        .set_pad_top(0)
+        .set_pad_left(0)
+        .set_pad_right(0)
+        .build(&mut styles);
+    bar.add_style(Part::Main, bar_style)?;
+
+    let mut button = Btn::create(&mut screen)?;
+    button.set_size(200, 50)?;
+    button.set_align(Align::BottomMid, 0, 0)?;
+    let mut button_text = Label::create(& mut button)?;
+    button_text.set_text(&CString::new("Clear").unwrap())?;
+    button_text.set_align(Align::Center,0,0)?;
+    let button_style = StyleBuilder::new()
+        .set_bg_color(Color::from_rgb((255,0,0)))
+        .set_text_color(Color::from_rgb((255,255,255)))
+        .set_border_width(1)
+        .set_pad_bottom(0)
+        .set_pad_top(0)
+        .set_pad_left(0)
+        .set_pad_right(0)
+        .build(&mut styles);
+    button.add_style(Part::Main, button_style)?;
+    button.on_event(|_button, _event| match _event {
+        Event::Clicked => {
+            channel.send(Message::Clear).unwrap();
+        }
+        _ => {}
     })?;
 
     let mut tab = HashMap::<String, Entry>::new();
@@ -194,7 +252,7 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
     loop {
         let start = Instant::now();
         lvgl::task_handler();
-        let res = recv.recv_timeout(Duration::from_millis(15));
+        let res = recv.try_recv();
         match res {
             Ok(message) => {
                 match message {
@@ -202,13 +260,27 @@ pub fn do_view(send: Sender<Message>, recv: Receiver<Message>) -> LvResult<()> {
                         update_table_view(&mut table, &tab, sorting.clone()).unwrap();
                     }
                     Message::Publish { topic, value, time } => {
-                        update_table(&mut tab, Message::Publish { topic, value, time });
+                        update_table(&mut tab, Message::Publish { topic:topic.clone(), value:value.clone(), time });
+                        update_table_view(&mut table, &tab, sorting.clone()).unwrap();
+                        if  topic == "src/ESP32-44592/sys/latency" {
+                            let mut value = value.clone();
+                            value.truncate(4);
+                            let value = value.parse::<u32>().unwrap();
+                            bar.set_value((value*5) as i32,Animation::OFF).unwrap();
+                            bar_text.set_text(&CString::new(format!("{} ms", value)).unwrap()).unwrap();
+                        }
+                    }
+                    Message::Clear => {
+                        info!("Clear");
+                        tab.clear();
                         update_table_view(&mut table, &tab, sorting.clone()).unwrap();
                     }
                     _ => {}
                 };
             }
-            Err(e) => {}
+            Err(e) => {
+                thread::sleep(Duration::from_millis(15));
+            }
         }
         lvgl::tick_inc(Instant::now().duration_since(start));
     }
