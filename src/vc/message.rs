@@ -22,7 +22,7 @@ pub enum Message {
 }
 
 pub trait Sink<T> {
-    fn on(&mut self, t: T) -> ();
+    fn on(&mut self, t: & T) -> ();
 }
 
 trait Source<T> {

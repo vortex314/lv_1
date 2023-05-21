@@ -5,15 +5,16 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
-
-use pub_sub::PubSub;
 use crate::vc::vc_label::VcLabel;
 use crate::Message;
 use chrono::{DateTime, Local};
 use core::mem::MaybeUninit;
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use cstr_core::CString;
+use pub_sub::PubSub;
+use yaml_rust::{YamlEmitter, YamlLoader};
 // use gtk::glib::Date;
+use crate::vc::message::Sink;
 use log::{info, warn, LevelFilter};
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
@@ -36,12 +37,12 @@ use lvgl_sys::lv_table_get_selected_cell;
 use std::boxed::Box;
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
-use std::thread;
 
-use yaml_rust::YamlLoader;
+use crate::vc::style_builder::StyleBuilder;
 
 const HOR_RES: u32 = 1024;
 const VER_RES: u32 = 768;
@@ -125,6 +126,7 @@ pub fn do_view(channel: PubSub<Message>) -> LvResult<()> {
 
     // Create screen and widgets
     let mut screen = display.get_scr_act()?;
+    let mut cont = Obj::create(&mut screen)?;
     let mut screen_style = StyleBuilder::new()
         .set_pad_bottom(0)
         .set_pad_top(0)
@@ -173,7 +175,7 @@ pub fn do_view(channel: PubSub<Message>) -> LvResult<()> {
     table.set_cell_value(0, 3, &CString::new("Time").unwrap())?;
 
     let mut sorting = Sorting::OnTopic;
-    let  recv = channel.subscribe();
+    let recv = channel.subscribe();
     table.on_event(|mut _table, _event| match _event {
         Event::ValueChanged => {
             let (row, col) = _table.get_selected_cell().unwrap();
@@ -189,19 +191,16 @@ pub fn do_view(channel: PubSub<Message>) -> LvResult<()> {
                 channel.send(Message::Refresh).unwrap();
             }
         }
-        Event::DrawPartBegin => {
-
-        }
-        _ => {
-        }
+        Event::DrawPartBegin => {}
+        _ => {}
     })?;
 
-    let mut  bar = Bar::create(&mut screen)?;
-    let mut bar_text = Label::create(& mut bar)?;
+    let mut bar = Bar::create(&mut screen)?;
+    let mut bar_text = Label::create(&mut bar)?;
     bar_text.set_text(&CString::new("Time").unwrap())?;
     let bar_text_style = StyleBuilder::new()
         .set_bg_color(Color::from_rgb((0, 0, 0)))
-        .set_text_color(Color::from_rgb((255,255,255)))
+        .set_text_color(Color::from_rgb((255, 255, 255)))
         .set_align(Align::Center)
         .set_border_width(0)
         .set_pad_bottom(0)
@@ -211,9 +210,9 @@ pub fn do_view(channel: PubSub<Message>) -> LvResult<()> {
         .build(&mut styles);
     bar_text.add_style(Part::Main, bar_text_style)?;
     bar.set_size(200, 20)?;
-    bar.set_align( Align::Center, 0, 0)?;
-    bar.set_value(50,Animation::OFF)?;
-    let  bar_style = StyleBuilder::new()
+    bar.set_align(Align::Center, 0, 0)?;
+    bar.set_value(50, Animation::OFF)?;
+    let bar_style = StyleBuilder::new()
         .set_bg_color(Color::from_rgb((0, 255, 0)))
         .set_border_width(1)
         .set_pad_bottom(0)
@@ -226,12 +225,12 @@ pub fn do_view(channel: PubSub<Message>) -> LvResult<()> {
     let mut button = Btn::create(&mut screen)?;
     button.set_size(200, 50)?;
     button.set_align(Align::BottomMid, 0, 0)?;
-    let mut button_text = Label::create(& mut button)?;
+    let mut button_text = Label::create(&mut button)?;
     button_text.set_text(&CString::new("Clear").unwrap())?;
-    button_text.set_align(Align::Center,0,0)?;
+    button_text.set_align(Align::Center, 0, 0)?;
     let button_style = StyleBuilder::new()
-        .set_bg_color(Color::from_rgb((255,0,0)))
-        .set_text_color(Color::from_rgb((255,255,255)))
+        .set_bg_color(Color::from_rgb((255, 0, 0)))
+        .set_text_color(Color::from_rgb((255, 255, 255)))
         .set_border_width(1)
         .set_pad_bottom(0)
         .set_pad_top(0)
@@ -247,6 +246,8 @@ pub fn do_view(channel: PubSub<Message>) -> LvResult<()> {
     })?;
 
     let mut tab = HashMap::<String, Entry>::new();
+    let y = YamlLoader::load_from_str(include_str!("../../redis.yaml")).unwrap();
+    let mut _lb = VcLabel::new(&mut cont, y[0]["screen"]["label_latency"].clone(), channel.clone());
 
     info!("start loop");
     loop {
@@ -260,14 +261,28 @@ pub fn do_view(channel: PubSub<Message>) -> LvResult<()> {
                         update_table_view(&mut table, &tab, sorting.clone()).unwrap();
                     }
                     Message::Publish { topic, value, time } => {
-                        update_table(&mut tab, Message::Publish { topic:topic.clone(), value:value.clone(), time });
+                        _lb.on(&Message::Publish {
+                            topic: topic.clone(),
+                            value: value.clone(),
+                            time,
+                        });
+                        update_table(
+                            &mut tab,
+                            Message::Publish {
+                                topic: topic.clone(),
+                                value: value.clone(),
+                                time,
+                            },
+                        );
                         update_table_view(&mut table, &tab, sorting.clone()).unwrap();
-                        if  topic == "src/ESP32-44592/sys/latency" {
+                        if topic == "src/ESP32-44592/sys/latency" {
                             let mut value = value.clone();
                             value.truncate(4);
                             let value = value.parse::<u32>().unwrap();
-                            bar.set_value((value*5) as i32,Animation::OFF).unwrap();
-                            bar_text.set_text(&CString::new(format!("{} ms", value)).unwrap()).unwrap();
+                            bar.set_value((value * 5) as i32, Animation::OFF).unwrap();
+                            bar_text
+                                .set_text(&CString::new(format!("{} ms", value)).unwrap())
+                                .unwrap();
                         }
                     }
                     Message::Clear => {
@@ -372,100 +387,6 @@ fn new_grid_style<'a>(
     style
 }
 
-struct StyleBuilder {
-    style: Style,
-}
-
-impl StyleBuilder {
-    fn new() -> StyleBuilder {
-        StyleBuilder {
-            style: Style::default(),
-        }
-    }
-    fn from(style: Style) -> StyleBuilder {
-        StyleBuilder { style }
-    }
-    fn set_grid_cell_column_pos(&mut self, x: i16) -> &mut StyleBuilder {
-        self.style.set_grid_cell_column_pos(x);
-        self
-    }
-    fn set_grid_cell_row_pos(&mut self, y: i16) -> &mut StyleBuilder {
-        self.style.set_grid_cell_row_pos(y);
-        self
-    }
-    fn set_grid_cell_column_span(&mut self, x_size: i16) -> &mut StyleBuilder {
-        self.style.set_grid_cell_column_span(x_size);
-        self
-    }
-    fn set_grid_cell_row_span(&mut self, y_size: i16) -> &mut StyleBuilder {
-        self.style.set_grid_cell_row_span(y_size);
-        self
-    }
-    fn set_align(&mut self, align: Align) -> &mut StyleBuilder {
-        self.style.set_align(align);
-        self
-    }
-    fn set_grid_cell_x_align(&mut self, align: GridAlign) -> &mut StyleBuilder {
-        self.style.set_grid_cell_x_align(align);
-        self
-    }
-    fn set_grid_cell_y_align(&mut self, align: GridAlign) -> &mut StyleBuilder {
-        self.style.set_grid_cell_y_align(align);
-        self
-    }
-    fn set_width(&mut self, width: i16) -> &mut StyleBuilder {
-        self.style.set_width(width);
-        self
-    }
-    fn set_height(&mut self, height: i16) -> &mut StyleBuilder {
-        self.style.set_height(height);
-        self
-    }
-    fn set_pad_top(&mut self, pad: i16) -> &mut StyleBuilder {
-        self.style.set_pad_top(pad);
-        self
-    }
-    fn set_pad_bottom(&mut self, pad: i16) -> &mut StyleBuilder {
-        self.style.set_pad_bottom(pad);
-        self
-    }
-    fn set_pad_left(&mut self, pad: i16) -> &mut StyleBuilder {
-        self.style.set_pad_left(pad);
-        self
-    }
-    fn set_pad_right(&mut self, pad: i16) -> &mut StyleBuilder {
-        self.style.set_pad_right(pad);
-        self
-    }
-    fn set_radius(&mut self, radius: i16) -> &mut StyleBuilder {
-        self.style.set_radius(radius);
-        self
-    }
-    fn set_bg_color(&mut self, color: Color) -> &mut StyleBuilder {
-        self.style.set_bg_color(color);
-        self
-    }
-    fn set_bg_opa(&mut self, opa: Opacity) -> &mut StyleBuilder {
-        self.style.set_bg_opa(opa);
-        self
-    }
-    fn set_bg_grad_color(&mut self, color: Color) -> &mut StyleBuilder {
-        self.style.set_bg_grad_color(color);
-        self
-    }
-    fn set_text_color(&mut self, color: Color) -> &mut StyleBuilder {
-        self.style.set_text_color(color);
-        self
-    }
-    fn set_border_width(&mut self, width: i16) -> &mut StyleBuilder {
-        self.style.set_border_width(width);
-        self
-    }
-    fn build<'a>(&mut self, styles: &'a mut Vec<Style>) -> &'a mut Style {
-        styles.push(self.style.clone());
-        styles.last_mut().unwrap()
-    }
-}
 
 fn load_yaml() -> Vec<yaml_rust::Yaml> {
     let source = "

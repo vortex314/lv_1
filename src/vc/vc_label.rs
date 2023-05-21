@@ -1,8 +1,9 @@
-use crate::{Message,};
 use crate::vc::message::Sink;
+use crate::Message;
 use chrono::{DateTime, Local};
 use core::fmt::Formatter;
 use cstr_core::CString;
+use log::info;
 use std::{
     fmt::{Debug, Error},
     ops::ShrAssign,
@@ -35,7 +36,8 @@ pub struct VcLabel {
 }
 
 impl VcLabel {
-    fn new(cont: &mut Obj, config: Yaml, channel: pub_sub::PubSub<Message>) -> VcLabel {
+    pub fn new(cont: &mut Obj, config: Yaml, channel: pub_sub::PubSub<Message>) -> VcLabel {
+        info!("Creating label : {:?}", config);
         let mut label = VcLabel {
             topic: config["src"].as_str().unwrap_or("NoTopic").to_string(),
             value: config["value"].as_str().unwrap_or("NoValue").to_string(),
@@ -45,25 +47,42 @@ impl VcLabel {
             lv_label: Label::create(cont).unwrap(),
         };
         let text = format!("{}{}{}", label.prefix, label.value, label.suffix);
-        label.lv_label.set_text(&CString::new(text).unwrap());
+        match label.lv_label.set_text(&CString::new(text).unwrap()) {
+            Ok(_) => {}
+            Err(e) => {
+                info!("Error setting label text: {:?}", e);
+            }
+        }
         let mut style = Style::default();
-        style.set_grid_cell_column_pos(config["x"].as_i64().unwrap_or(0) as i16);
-        style.set_grid_cell_row_pos(config["y"].as_i64().unwrap_or(0) as i16);
+        style.set_grid_cell_column_pos(config["x"].as_i64().unwrap_or(200) as i16);
+        style.set_grid_cell_row_pos(config["y"].as_i64().unwrap_or(200) as i16);
         style.set_grid_cell_column_span(config["w"].as_i64().unwrap_or(1) as i16);
         style.set_grid_cell_row_span(config["h"].as_i64().unwrap_or(1) as i16);
+        match label.lv_label.add_style(Part::Main, &mut style) {
+            Ok(_) => {}
+            Err(e) => {
+                info!("Error setting label style: {:?}", e);
+            }
+        }
         label
     }
 }
 
 impl Sink<Message> for VcLabel {
-    fn on(&mut self, t: Message) -> () {
+    fn on(&mut self, t: &Message) -> () {
         match t {
             Message::Publish { topic, value, time } => {
-                if topic == self.topic {
-                    self.value = value;
-                    self.time = time;
+                info!("compare topic: {:?} {:?} ", &topic, &self.topic);
+                if topic == &self.topic {
+                    self.value = value.to_string();
+                    self.time = time.clone();
                     let text = format!("{}{}{}", self.prefix, self.value, self.suffix);
-                    self.lv_label.set_text(&CString::new(text).unwrap());
+                    match self.lv_label.set_text(&CString::new(text).unwrap()) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            info!("Error setting label text: {:?}", e);
+                        }
+                    }
                 }
             }
             _ => {}
